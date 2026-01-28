@@ -1,3 +1,4 @@
+import { createWidget } from "../tui"
 import type { CostInfo, DisplayOptions, TokenUsage, UsageData } from "../types"
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -88,4 +89,13 @@ export function formatUsageSummary(usageList: UsageData[], options: DisplayOptio
 	]
 
 	return summary.join("\n")
+}
+
+export function formatUsageTui(usageList: UsageData[], options: DisplayOptions): string {
+	const widget = createWidget({
+		compactMode: options.compactMode,
+		title: "Usage Monitor",
+	})
+	widget.setUsageData(usageList)
+	return widget.toString()
 }

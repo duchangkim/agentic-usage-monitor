@@ -120,3 +120,6 @@ export default UsageMonitorPlugin
 
 export type { Provider, UsageData, ProviderCredentials, TimePeriod, UsageApiError } from "./types"
 export { createUsageApiError } from "./types"
+
+export { createWidget, UsageWidget, type WidgetConfig, type WidgetPosition } from "./tui"
+export { formatUsageTui } from "./utils"

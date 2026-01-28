@@ -7,4 +7,5 @@ export {
 	formatPeriod,
 	formatUsageData,
 	formatUsageSummary,
+	formatUsageTui,
 } from "./format"
