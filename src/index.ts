@@ -1,9 +1,19 @@
 import type { Hooks, Plugin, PluginInput } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
-
+import { createOAuthApi } from "./data"
 import { getAllProviders } from "./providers"
 import type { Provider, ProviderCredentials, TimePeriod, UsageData } from "./types"
 import { type Config, SimpleCache, formatUsageTui, parseConfig } from "./utils"
+
+function formatResetTime(resetDate: Date): string {
+	const now = new Date()
+	const diff = resetDate.getTime() - now.getTime()
+	if (diff <= 0) return "now"
+	const hours = Math.floor(diff / (1000 * 60 * 60))
+	const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+	if (hours > 0) return `${hours}h ${minutes}m`
+	return `${minutes}m`
+}
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -110,6 +120,59 @@ export const UsageMonitorPlugin: Plugin = async (_ctx: PluginInput) => {
 						showModelBreakdown: state.config.showModelBreakdown,
 						compactMode: state.config.compactMode,
 					})
+				},
+			}),
+
+			rate_limits: tool({
+				description: "Show Claude rate limits (5-hour and 7-day usage windows)",
+				args: {},
+				async execute() {
+					const api = createOAuthApi()
+					const result = await api.getRateLimitSummary()
+
+					if (!result.success) {
+						if (result.error.type === "credentials_error") {
+							return `Error: ${result.error.message}\n\nRun 'opencode auth login' to authenticate.`
+						}
+						return `Error: ${result.error.message}`
+					}
+
+					const { usage, profile } = result.data
+					const lines: string[] = []
+
+					const { account, organization } = profile
+					lines.push(`User: ${account.displayName || account.fullName}`)
+					if (organization) {
+						lines.push(`Org:  ${organization.name}`)
+						const plan =
+							organization.organizationType === "claude_enterprise"
+								? "Enterprise"
+								: account.hasClaudeMax
+									? "Max"
+									: account.hasClaudePro
+										? "Pro"
+										: "Free"
+						lines.push(`Plan: ${plan}`)
+					}
+					lines.push("")
+
+					const { fiveHour, sevenDay } = usage
+
+					if (fiveHour) {
+						const resetIn = formatResetTime(fiveHour.resetsAt)
+						lines.push(`5-Hour:  ${fiveHour.utilization.toFixed(1)}% used (resets in ${resetIn})`)
+					}
+
+					if (sevenDay) {
+						const resetIn = formatResetTime(sevenDay.resetsAt)
+						lines.push(`7-Day:   ${sevenDay.utilization.toFixed(1)}% used (resets in ${resetIn})`)
+					}
+
+					if (!fiveHour && !sevenDay) {
+						lines.push("No active rate limits")
+					}
+
+					return lines.join("\n")
 				},
 			}),
 		},
