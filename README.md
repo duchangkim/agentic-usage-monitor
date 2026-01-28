@@ -1,107 +1,169 @@
 # OpenCode Usage Monitor
 
-Monitor Claude rate limits and API usage directly in your terminal.
+Real-time Claude rate limit monitoring alongside OpenCode using tmux.
 
-![Demo](https://via.placeholder.com/600x300?text=Usage+Monitor+Demo)
-
-## Features
-
-- **Rate Limits**: Track 5-hour and 7-day Claude usage windows
-- **Profile Info**: Display user, organization, and plan details
-- **Auto-refresh**: Continuously update usage data
-- **tmux Integration**: Run alongside OpenCode in split panes
-- **Multiple Auth Sources**: Supports OpenCode and Claude Code credentials
+```
+┌─────────────────────────────────┬────────────────┐
+│                                 │ Claude Limits  │
+│         opencode                │ ────────────── │
+│                                 │ 5h:  ████░ 44% │
+│         (main TUI)              │ 7d:  █░░░░  4% │
+│                                 │                │
+│                                 │ User: Duchang  │
+│                                 │ Plan: Max      │
+└─────────────────────────────────┴────────────────┘
+```
 
 ## Quick Start
 
 ```bash
-# Install
-bun install
+# One-command setup (installs tmux, bun, opencode if needed)
+curl -fsSL https://raw.githubusercontent.com/user/opencode-usage-monitor/main/bin/setup | bash
 
-# Show rate limits (one-shot)
-bun run cli --once
+# Or manual setup
+bun install -g opencode-usage-monitor
 
-# Auto-refresh mode
-bun run cli
+# Start opencode with monitor
+opencode-with-monitor
 ```
 
-## Authentication
+## Features
 
-The monitor automatically loads credentials from:
+- **Real-time Rate Limits**: 5-hour and 7-day usage windows
+- **Profile Info**: User, organization, and plan badges (Pro/Max/Enterprise)
+- **Auto-refresh**: Updates every 30 seconds
+- **tmux Integration**: Seamless side-by-side with OpenCode
+- **Plugin Tools**: `/rate_limits` and `/monitor` commands in OpenCode
 
-1. **OpenCode** (preferred): `~/.local/share/opencode/auth.json`
-2. **Claude Code**: `~/.claude/.credentials.json`
+## Installation
 
-To authenticate:
+### Prerequisites
+
+- **tmux**: Terminal multiplexer
+- **bun**: JavaScript runtime
+- **opencode**: AI coding assistant
+
+### Automatic Setup
 
 ```bash
-# Using OpenCode
-opencode auth login
+# Run the setup script
+usage-monitor-setup
+```
 
-# Or using Claude Code
-claude
+The setup script will:
+1. Check for missing dependencies
+2. Offer to install them automatically
+3. Configure everything for you
+
+### Manual Installation
+
+```bash
+# 1. Install tmux
+brew install tmux       # macOS
+sudo apt install tmux   # Ubuntu/Debian
+sudo dnf install tmux   # Fedora
+
+# 2. Install bun (if not installed)
+curl -fsSL https://bun.sh/install | bash
+
+# 3. Install opencode
+bun install -g opencode
+
+# 4. Install usage-monitor
+bun install -g opencode-usage-monitor
 ```
 
 ## Usage
 
-### Standalone CLI
+### Start OpenCode with Monitor
 
 ```bash
-# Show rate limits with auto-refresh
-usage-monitor
+# Default: monitor on right side (25% width)
+opencode-with-monitor
 
-# One-shot display
-usage-monitor --once
+# Wider monitor pane (30%)
+opencode-with-monitor -w 30
 
-# Show only rate limits (OAuth)
-usage-monitor --oauth-only
-
-# Show only API usage (requires Admin API key)
-usage-monitor --api-only
-
-# Custom config file
-usage-monitor --config ~/.config/usage-monitor/config.yaml
-```
-
-### With tmux
-
-```bash
-# Start OpenCode with monitor in side pane
-./bin/opencode-with-monitor
-
-# With custom width (percentage)
-./bin/opencode-with-monitor -w 30
+# Monitor on left side
+opencode-with-monitor -l
 
 # Custom session name
-./bin/opencode-with-monitor -s myproject
+opencode-with-monitor -s myproject
 
-# Generic: run any command with monitor
-./bin/with-monitor -- opencode
-./bin/with-monitor -- nvim .
-./bin/with-monitor -l -- zsh  # monitor on left
+# Pass arguments to opencode
+opencode-with-monitor -- --model opus
+
+# Kill existing session and restart
+opencode-with-monitor -k
 ```
 
-### As OpenCode Plugin
+### Generic: Any Command with Monitor
 
-Add to your `opencode.json`:
+```bash
+# Run any command with monitor
+with-monitor -- opencode
+with-monitor -- nvim .
+with-monitor -- zsh
 
-```json
-{
-  "plugins": ["opencode-usage-monitor"]
-}
+# Options
+with-monitor -w 30 -- opencode        # wider monitor
+with-monitor -l -- opencode           # monitor on left
+with-monitor -s myproject -- opencode # custom session name
 ```
 
-Then use the `/rate_limits` tool in chat.
+### Inside OpenCode (Plugin Commands)
+
+Once opencode is running with the plugin:
+
+```
+/rate_limits              # Show current rate limits
+/monitor status           # Check tmux/monitor status
+/monitor setup            # Show setup instructions
+/monitor help             # Show help
+```
+
+## tmux Basics
+
+If you're new to tmux, here are the essential commands:
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+b %` | Split pane horizontally |
+| `Ctrl+b "` | Split pane vertically |
+| `Ctrl+b o` | Switch between panes |
+| `Ctrl+b x` | Close current pane |
+| `Ctrl+b d` | Detach from session |
+| `Ctrl+b [` | Scroll mode (q to exit) |
+| `tmux attach` | Reattach to session |
+
+### Session Management
+
+```bash
+# List sessions
+tmux list-sessions
+
+# Attach to specific session
+tmux attach -t opencode
+
+# Kill a session
+tmux kill-session -t opencode
+```
 
 ## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `USAGE_MONITOR_WIDTH` | Monitor pane width (%) | 25 |
+| `USAGE_MONITOR_SESSION` | tmux session name | opencode |
+| `USAGE_MONITOR_REFRESH_INTERVAL` | Refresh interval (seconds) | 30 |
+
+### Config File
 
 Create `~/.config/usage-monitor/config.yaml`:
 
 ```yaml
-anthropic:
-  admin_api_key: ${ANTHROPIC_ADMIN_API_KEY}
-  enabled: true
-
 oauth:
   enabled: true
   show_profile: true
@@ -114,16 +176,22 @@ widget:
   style: rounded
 ```
 
-### Environment Variables
+## Authentication
 
-| Variable | Description |
-|----------|-------------|
-| `ANTHROPIC_ADMIN_API_KEY` | Admin API key for organization usage |
-| `USAGE_MONITOR_REFRESH_INTERVAL` | Auto-refresh interval (seconds) |
-| `USAGE_MONITOR_WIDTH` | tmux pane width percentage |
-| `USAGE_MONITOR_SESSION` | Default tmux session name |
+The monitor automatically loads credentials from:
+
+1. **OpenCode** (primary): `~/.local/share/opencode/auth.json`
+2. **Claude Code** (fallback): `~/.claude/.credentials.json`
+
+To authenticate:
+
+```bash
+opencode auth login
+```
 
 ## Display
+
+The monitor shows:
 
 ```
 ╭──────────── Claude Rate Limits ────────────╮
@@ -134,46 +202,67 @@ widget:
 │ 5-Hour:  ━━━━━━━━░░░░░░░░░░  44% (3h 1m)   │
 │ 7-Day:   ━░░░░░░░░░░░░░░░░░   4% (166h 1m) │
 ├────────────────────────────────────────────┤
-│ Updated: 1:58:04 AM                        │
+│ Updated: 2:30:15 AM                        │
 ╰────────────────────────────────────────────╯
 ```
+
+## Troubleshooting
+
+### "tmux is required but not installed"
+
+Install tmux:
+```bash
+brew install tmux      # macOS
+sudo apt install tmux  # Ubuntu
+```
+
+### "opencode is required but not installed"
+
+Install opencode:
+```bash
+bun install -g opencode
+opencode auth login
+```
+
+### "Session already exists"
+
+Either attach to it or kill and restart:
+```bash
+# Attach to existing
+opencode-with-monitor -a
+
+# Or kill and restart
+opencode-with-monitor -k
+```
+
+### Monitor not showing data
+
+1. Check authentication: `opencode auth login`
+2. Verify credentials exist: `cat ~/.local/share/opencode/auth.json`
+3. Test manually: `usage-monitor --once`
 
 ## Development
 
 ```bash
+# Clone the repo
+git clone https://github.com/user/opencode-usage-monitor
+cd opencode-usage-monitor
+
 # Install dependencies
 bun install
-
-# Type check
-bun run typecheck
 
 # Build
 bun run build
 
-# Run demo
-bun run demo
+# Run locally
+bun run cli --once
+
+# Type check
+bun run typecheck
 
 # Lint
 bun run lint
 ```
-
-## Data Sources
-
-### OAuth API (Default)
-
-Uses Claude OAuth credentials to fetch:
-- 5-hour rate limit window
-- 7-day rate limit window
-- User profile and organization info
-
-### Admin API (Optional)
-
-Requires `ANTHROPIC_ADMIN_API_KEY` for:
-- Token usage (input/output)
-- Cost tracking
-- Claude Code usage metrics
-
-Get your Admin API key from [Anthropic Console](https://console.anthropic.com) > Settings > Admin API Keys.
 
 ## License
 

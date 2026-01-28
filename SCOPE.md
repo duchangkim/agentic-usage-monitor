@@ -162,6 +162,16 @@ opencode-usage-monitor/
 - [x] opencode plugin hook (rate_limits tool 추가)
 - [x] 문서화 (README.md)
 
+### Phase 5: tmux Integration Enhancement (NEW)
+
+**Architecture Decision**: OpenCode의 터미널 TUI 특성상 내부 위젯 렌더링 불가.
+tmux를 통한 side-by-side 방식으로 최적의 사용자 경험 제공.
+
+- [x] tmux 스크립트 개선 (자동 설치 감지, 에러 처리)
+- [x] `/monitor` slash command (status, setup, help)
+- [x] 자동 설치 스크립트 (bin/setup)
+- [x] 사용자 친화적 README (tmux 가이드 포함)
+
 ## Configuration
 
 ```yaml
@@ -224,11 +234,21 @@ usage-monitor --config ~/.config/usage-monitor/config.yaml
 - **OAuth rate limits tracking** (OpenCode + Claude Code credentials)
 - OAuth credentials loader (OpenCode ~/.local/share/opencode/auth.json, Claude Code ~/.claude/.credentials.json)
 - Profile info display (user, organization, plan badges)
-- **tmux integration** (bin/opencode-with-monitor, bin/with-monitor)
-- **OpenCode plugin** (rate_limits tool)
-- **README.md documentation**
+- **tmux integration** (bin/opencode-with-monitor, bin/with-monitor, bin/setup)
+- **OpenCode plugin** (rate_limits, monitor tools)
+- **README.md documentation** (tmux guide 포함)
 
 ### 🎉 All Phases Complete!
+
+## Architecture Decision
+
+OpenCode/Crush는 Go로 작성된 터미널 TUI 애플리케이션으로, 플러그인을 통한 커스텀 UI 위젯 렌더링을 지원하지 않음.
+(MCP Apps는 웹 기반 클라이언트 전용)
+
+**채택된 솔루션**: tmux를 통한 side-by-side 통합
+- 별도 패널에서 사용량 모니터 실행
+- OpenCode와 자연스럽게 병행 사용
+- `/monitor` 명령어로 tmux 상태 확인 및 설정 가이드 제공
 
 ## References
 
