@@ -12,7 +12,7 @@ export interface OAuthCredentials {
 export interface CredentialsResult {
 	success: true
 	credentials: OAuthCredentials
-	source: "file" | "keychain"
+	source: "opencode" | "claude-code"
 }
 
 export interface CredentialsError {
@@ -22,93 +22,146 @@ export interface CredentialsError {
 
 export type LoadCredentialsResult = CredentialsResult | CredentialsError
 
-interface RawCredentialsFile {
+// OpenCode auth.json structure
+interface OpenCodeAuthFile {
+	anthropic?: {
+		type?: string
+		access?: string
+		refresh?: string
+		expires?: number // Unix timestamp in ms
+	}
+}
+
+// Claude Code .credentials.json structure
+interface ClaudeCodeCredentialsFile {
 	claudeAiOauth?: {
 		accessToken?: string
 		refreshToken?: string
-		expiresAt?: string
+		expiresAt?: string // ISO date string
 		scopes?: string[]
 	}
 }
 
-function getCredentialsPath(): string {
+function getOpenCodeAuthPath(): string {
+	return join(homedir(), ".local", "share", "opencode", "auth.json")
+}
+
+function getClaudeCodeCredentialsPath(): string {
 	return join(homedir(), ".claude", ".credentials.json")
 }
 
-function isTokenExpired(expiresAt: string | undefined): boolean {
-	if (!expiresAt) return false
-
-	const expiryDate = new Date(expiresAt)
-	const now = new Date()
+function isTokenExpiredMs(expiresMs: number | undefined): boolean {
+	if (!expiresMs) return false
 	const bufferMs = 5 * 60 * 1000
-
-	return expiryDate.getTime() - bufferMs < now.getTime()
+	return expiresMs - bufferMs < Date.now()
 }
 
-function loadFromFile(): LoadCredentialsResult {
-	const credentialsPath = getCredentialsPath()
+function isTokenExpiredIso(expiresAt: string | undefined): boolean {
+	if (!expiresAt) return false
+	const expiryDate = new Date(expiresAt)
+	const bufferMs = 5 * 60 * 1000
+	return expiryDate.getTime() - bufferMs < Date.now()
+}
 
-	if (!existsSync(credentialsPath)) {
-		return {
-			success: false,
-			error: `Credentials file not found at ${credentialsPath}. Run 'claude' to authenticate.`,
-		}
+function loadFromOpenCode(): LoadCredentialsResult {
+	const authPath = getOpenCodeAuthPath()
+
+	if (!existsSync(authPath)) {
+		return { success: false, error: "opencode-not-found" }
 	}
 
 	try {
-		const content = readFileSync(credentialsPath, "utf-8")
-		const parsed: RawCredentialsFile = JSON.parse(content)
+		const content = readFileSync(authPath, "utf-8")
+		const parsed: OpenCodeAuthFile = JSON.parse(content)
 
-		if (!parsed.claudeAiOauth) {
-			return {
-				success: false,
-				error: "No OAuth credentials found in credentials file. Run 'claude' to authenticate.",
-			}
+		if (!parsed.anthropic?.access) {
+			return { success: false, error: "No Anthropic OAuth in OpenCode auth file." }
 		}
 
-		const { accessToken, refreshToken, expiresAt, scopes } = parsed.claudeAiOauth
+		const { access, refresh, expires } = parsed.anthropic
 
-		if (!accessToken) {
-			return {
-				success: false,
-				error: "No access token found in credentials file.",
-			}
+		if (!access.startsWith("sk-ant-oat")) {
+			return { success: false, error: "Invalid OAuth token format in OpenCode." }
 		}
 
-		if (!accessToken.startsWith("sk-ant-oat")) {
-			return {
-				success: false,
-				error: "Invalid OAuth token format. Expected token starting with 'sk-ant-oat'.",
-			}
-		}
-
-		if (isTokenExpired(expiresAt)) {
-			return {
-				success: false,
-				error: "OAuth token has expired. Run 'claude' to refresh your authentication.",
-			}
+		if (isTokenExpiredMs(expires)) {
+			return { success: false, error: "OpenCode OAuth token expired. Run 'opencode auth login'." }
 		}
 
 		return {
 			success: true,
 			credentials: {
-				accessToken,
-				refreshToken,
-				expiresAt,
-				scopes,
+				accessToken: access,
+				refreshToken: refresh,
+				expiresAt: expires ? new Date(expires).toISOString() : undefined,
+				scopes: undefined,
 			},
-			source: "file",
+			source: "opencode",
 		}
 	} catch (error) {
 		return {
 			success: false,
-			error: `Failed to parse credentials file: ${error instanceof Error ? error.message : String(error)}`,
+			error: `Failed to parse OpenCode auth: ${error instanceof Error ? error.message : String(error)}`,
+		}
+	}
+}
+
+function loadFromClaudeCode(): LoadCredentialsResult {
+	const credentialsPath = getClaudeCodeCredentialsPath()
+
+	if (!existsSync(credentialsPath)) {
+		return { success: false, error: "claude-code-not-found" }
+	}
+
+	try {
+		const content = readFileSync(credentialsPath, "utf-8")
+		const parsed: ClaudeCodeCredentialsFile = JSON.parse(content)
+
+		if (!parsed.claudeAiOauth?.accessToken) {
+			return { success: false, error: "No OAuth credentials in Claude Code file." }
+		}
+
+		const { accessToken, refreshToken, expiresAt, scopes } = parsed.claudeAiOauth
+
+		if (!accessToken.startsWith("sk-ant-oat")) {
+			return { success: false, error: "Invalid OAuth token format in Claude Code." }
+		}
+
+		if (isTokenExpiredIso(expiresAt)) {
+			return { success: false, error: "Claude Code OAuth token expired. Run 'claude'." }
+		}
+
+		return {
+			success: true,
+			credentials: { accessToken, refreshToken, expiresAt, scopes },
+			source: "claude-code",
+		}
+	} catch (error) {
+		return {
+			success: false,
+			error: `Failed to parse Claude Code credentials: ${error instanceof Error ? error.message : String(error)}`,
 		}
 	}
 }
 
 export function loadOAuthCredentials(): LoadCredentialsResult {
-	return loadFromFile()
+	const openCodeResult = loadFromOpenCode()
+	if (openCodeResult.success) return openCodeResult
+
+	const claudeCodeResult = loadFromClaudeCode()
+	if (claudeCodeResult.success) return claudeCodeResult
+
+	const openCodeNotFound = openCodeResult.error === "opencode-not-found"
+	const claudeCodeNotFound = claudeCodeResult.error === "claude-code-not-found"
+
+	if (openCodeNotFound && claudeCodeNotFound) {
+		return {
+			success: false,
+			error: "No credentials found. Run 'opencode auth login' or install Claude Code.",
+		}
+	}
+
+	return openCodeNotFound ? claudeCodeResult : openCodeResult
 }
 
 export function getTokenExpiryInfo(credentials: OAuthCredentials): {
