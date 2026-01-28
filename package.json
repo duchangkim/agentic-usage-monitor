@@ -5,11 +5,17 @@
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"bin": {
+		"usage-monitor": "./dist/cli.js"
+	},
 	"files": ["dist"],
 	"scripts": {
-		"build": "bun build src/index.ts --outdir dist --target bun",
+		"build": "bun build src/index.ts --outdir dist --target bun && bun build src/cli/index.ts --outfile dist/cli.js --target bun",
+		"build:cli": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
 		"dev": "bun build src/index.ts --outdir dist --target bun --watch",
 		"dev:install": "bun run build && bun run install:local",
+		"cli": "bun run src/cli/index.ts",
+		"cli:once": "bun run src/cli/index.ts --once",
 		"demo": "bun run src/demo/index.ts",
 		"demo:static": "bun run src/demo/index.ts --static",
 		"demo:api": "bun run src/demo/index.ts --api",
