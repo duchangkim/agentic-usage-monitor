@@ -158,9 +158,9 @@ opencode-usage-monitor/
 
 ### Phase 4: Integration
 
-- [ ] tmux 통합 스크립트
-- [ ] opencode plugin hook (가능 시)
-- [ ] 문서화
+- [x] tmux 통합 스크립트 (bin/opencode-with-monitor, bin/with-monitor)
+- [x] opencode plugin hook (rate_limits tool 추가)
+- [x] 문서화 (README.md)
 
 ## Configuration
 
@@ -221,18 +221,14 @@ usage-monitor --config ~/.config/usage-monitor/config.yaml
 - Auto-refresh mechanism (UsageMonitor, OAuthMonitor classes)
 - Configuration file support (YAML with Zod validation)
 - CLI binary with commands (--once, --help, --config, --oauth-only, --api-only)
-- **OAuth rate limits tracking** (Claude Code credentials)
-- OAuth credentials loader from ~/.claude/.credentials.json
+- **OAuth rate limits tracking** (OpenCode + Claude Code credentials)
+- OAuth credentials loader (OpenCode ~/.local/share/opencode/auth.json, Claude Code ~/.claude/.credentials.json)
 - Profile info display (user, organization, plan badges)
+- **tmux integration** (bin/opencode-with-monitor, bin/with-monitor)
+- **OpenCode plugin** (rate_limits tool)
+- **README.md documentation**
 
-### 🔄 In Progress
-
-- Testing with real Claude Code OAuth credentials
-
-### ⏳ TODO
-
-- tmux integration (Phase 4)
-- Documentation (Phase 4)
+### 🎉 All Phases Complete!
 
 ## References
 
