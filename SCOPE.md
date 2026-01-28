@@ -129,23 +129,32 @@ opencode-usage-monitor/
 
 ### Phase 1: Anthropic Admin API Integration
 
-- [ ] Admin API client 구현
-- [ ] Cost report fetching
-- [ ] Claude Code usage report
-- [ ] CLI 표시
+- [x] Admin API client 구현
+- [x] Cost report fetching
+- [x] Claude Code usage report
+- [x] CLI 표시
 
 ### Phase 2: TUI Widget Enhancement
 
-- [ ] Progress bar 컴포넌트
-- [ ] 다중 데이터 소스 통합 표시
-- [ ] Auto-refresh 구현
-- [ ] 설정 파일 지원
+- [x] Progress bar 컴포넌트
+- [x] 다중 데이터 소스 통합 표시
+- [x] Auto-refresh 구현
+- [x] 설정 파일 지원
+- [x] CLI entry point with commands
+
+### Phase 1.5: OAuth Rate Limits (NEW)
+
+- [x] OAuth credentials loader (~/.claude/.credentials.json)
+- [x] OAuth API client (/api/oauth/usage, /api/oauth/profile)
+- [x] Rate limit display (5-hour, 7-day windows)
+- [x] Profile information display (user, org, plan badges)
+- [x] CLI integration (--oauth-only, --rate-limits)
 
 ### Phase 3: Claude.ai Rate Limits (Optional)
 
-- [ ] 내부 API 리버스 엔지니어링 조사
-- [ ] Browser session 기반 구현 (가능 시)
-- [ ] 또는 manual input fallback
+- [x] OAuth API 사용 (Claude Code 인증 기반) - 완료!
+- [ ] Browser session 기반 구현 (필요시)
+- [ ] manual input fallback (필요시)
 
 ### Phase 4: Integration
 
@@ -158,17 +167,22 @@ opencode-usage-monitor/
 ```yaml
 # ~/.config/usage-monitor/config.yaml
 anthropic:
-  admin_api_key: ${ANTHROPIC_ADMIN_API_KEY}
+  admin_api_key: ${ANTHROPIC_ADMIN_API_KEY}  # Optional: for organizations
+  enabled: true
+
+oauth:
+  enabled: true          # Uses ~/.claude/.credentials.json
+  show_profile: true     # Show user/org info
 
 display:
-  refresh_interval: 30 # seconds
+  refresh_interval: 30   # seconds
   show_api_usage: true
-  show_rate_limits: true # requires unofficial method
+  show_rate_limits: true
 
 widget:
-  width: 40
+  width: 42
   style: rounded
-  position: left # for tmux split
+  position: left
 ```
 
 ## CLI Usage
@@ -177,17 +191,21 @@ widget:
 # Install globally
 npm install -g opencode-usage-monitor
 
-# Run standalone monitor
+# Run standalone monitor (shows OAuth rate limits by default)
 usage-monitor
-
-# Run with specific config
-usage-monitor --config ~/.config/usage-monitor/config.yaml
 
 # One-shot display (no auto-refresh)
 usage-monitor --once
 
-# API usage only (skip rate limits)
+# Show only OAuth rate limits (personal accounts)
+usage-monitor --oauth-only
+usage-monitor --rate-limits  # alias
+
+# Show only Admin API usage (organizations)
 usage-monitor --api-only
+
+# Run with specific config
+usage-monitor --config ~/.config/usage-monitor/config.yaml
 ```
 
 ## Current Status
@@ -198,19 +216,23 @@ usage-monitor --api-only
 - Position/toggle/style configuration
 - Interactive demo
 - Basic provider structure
+- Anthropic Admin API client (organizations only)
+- Progress bar component
+- Auto-refresh mechanism (UsageMonitor, OAuthMonitor classes)
+- Configuration file support (YAML with Zod validation)
+- CLI binary with commands (--once, --help, --config, --oauth-only, --api-only)
+- **OAuth rate limits tracking** (Claude Code credentials)
+- OAuth credentials loader from ~/.claude/.credentials.json
+- Profile info display (user, organization, plan badges)
 
 ### 🔄 In Progress
 
-- Project scope clarification (this document)
+- Testing with real Claude Code OAuth credentials
 
 ### ⏳ TODO
 
-- Anthropic Admin API client
-- Progress bar component
-- Auto-refresh mechanism
-- CLI binary setup
-- tmux integration
-- Configuration file support
+- tmux integration (Phase 4)
+- Documentation (Phase 4)
 
 ## References
 
