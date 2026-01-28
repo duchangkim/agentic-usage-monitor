@@ -8,9 +8,10 @@
 	"bin": {
 		"usage-monitor": "./dist/cli.js",
 		"opencode-with-monitor": "./bin/opencode-with-monitor",
-		"with-monitor": "./bin/with-monitor"
+		"with-monitor": "./bin/with-monitor",
+		"usage-monitor-setup": "./bin/setup"
 	},
-	"files": ["dist"],
+	"files": ["dist", "bin"],
 	"scripts": {
 		"build": "bun build src/index.ts --outdir dist --target bun && bun build src/cli/index.ts --outfile dist/cli.js --target bun",
 		"build:cli": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
