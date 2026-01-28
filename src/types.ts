@@ -1,7 +1,7 @@
 import type { z } from "zod"
 import type { ConfigSchema } from "./utils/config"
 
-export type Provider = "anthropic" | "openai" | "google" | "openrouter"
+export type Provider = "anthropic"
 
 export interface TokenUsage {
 	inputTokens: number
