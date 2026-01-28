@@ -77,7 +77,7 @@ export function getDefaultConfig(): ResolvedConfig {
 			currency: "USD",
 		},
 		widget: {
-			width: 42,
+			width: 52,
 			style: "rounded",
 			position: "left",
 			colors: true,

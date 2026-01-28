@@ -128,18 +128,30 @@ async function fetchRealData(): Promise<{
 } | null> {
 	const apiKey = process.env.ANTHROPIC_ADMIN_API_KEY
 	if (!apiKey) {
-		console.log(text("ANTHROPIC_ADMIN_API_KEY not set", ANSI.fg.red))
+		console.log(text("ANTHROPIC_ADMIN_API_KEY not set in .env", ANSI.fg.yellow))
+		console.log(text("Note: Admin API key is different from regular API key.", ANSI.dim))
+		console.log(text("Get it from: Console > Settings > Admin API Keys", ANSI.dim))
 		return null
 	}
 
+	console.log(text("Fetching from Admin API...", ANSI.fg.cyan))
 	const api = createAdminApi(apiKey)
 	const result = await api.getMonthlyUsageSummary()
 
 	if (!result.success) {
-		console.log(text(`API Error: ${result.error.message}`, ANSI.fg.red))
+		if (result.error.type === "authentication_error") {
+			console.log(text("Authentication failed.", ANSI.fg.red))
+			console.log(
+				text("Your key might be a regular API key, not an Admin API key.", ANSI.fg.yellow),
+			)
+			console.log(text("Admin keys: 'sk-ant-admin...' vs Regular: 'sk-ant-api...'", ANSI.dim))
+		} else {
+			console.log(text(`API Error: ${result.error.message}`, ANSI.fg.red))
+		}
 		return null
 	}
 
+	console.log(text("Success!", ANSI.fg.green))
 	return {
 		inputTokens: result.data.totalInputTokens,
 		outputTokens: result.data.totalOutputTokens,
