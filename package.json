@@ -1,7 +1,7 @@
 {
 	"name": "opencode-usage-monitor",
 	"version": "0.1.0",
-	"description": "OpenCode plugin for monitoring LLM API usage and costs across major providers",
+	"description": "OpenCode plugin for monitoring Claude rate limits and usage",
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -19,9 +19,6 @@
 		"dev:install": "bun run build && bun run install:local",
 		"cli": "bun run src/cli/index.ts",
 		"cli:once": "bun run src/cli/index.ts --once",
-		"demo": "bun run src/demo/index.ts",
-		"demo:static": "bun run src/demo/index.ts --static",
-		"demo:api": "bun run src/demo/index.ts --api",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
@@ -33,13 +30,11 @@
 	"keywords": [
 		"opencode",
 		"opencode-plugin",
-		"llm",
-		"usage",
-		"monitoring",
+		"claude",
 		"anthropic",
-		"openai",
-		"gemini",
-		"openrouter"
+		"rate-limits",
+		"usage",
+		"monitoring"
 	],
 	"author": "",
 	"license": "MIT",
