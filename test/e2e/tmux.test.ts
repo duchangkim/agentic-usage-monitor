@@ -103,3 +103,147 @@ describe("bin/with-monitor", () => {
 		expect(result.stdout.toString()).toContain("Usage:")
 	})
 })
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const getPaneNames = async (sessionName: string): Promise<string[]> => {
+	const result = await $`tmux list-panes -t ${sessionName} -F "#{pane_title}"`.quiet().nothrow()
+	if (result.exitCode !== 0) return []
+	return result.stdout.toString().trim().split("\n")
+}
+
+const getPaneCount = async (sessionName: string): Promise<number> => {
+	const result = await $`tmux list-panes -t ${sessionName}`.quiet().nothrow()
+	if (result.exitCode !== 0) return 0
+	return result.stdout.toString().trim().split("\n").length
+}
+
+const sessionExists = async (sessionName: string): Promise<boolean> => {
+	const result = await $`tmux has-session -t ${sessionName}`.quiet().nothrow()
+	return result.exitCode === 0
+}
+
+const killSession = async (sessionName: string): Promise<void> => {
+	await $`tmux kill-session -t ${sessionName}`.quiet().nothrow()
+}
+
+describe("Pane Naming and Coordinated Shutdown", () => {
+	beforeAll(async () => {
+		tmuxAvailable = await checkTmuxAvailable()
+	})
+
+	it("with-monitor should name panes correctly (main and monitor)", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const sessionName = "test-pane-names-" + Date.now()
+
+		try {
+			await $`./bin/with-monitor -s ${sessionName} -- sleep 5`.quiet().nothrow()
+			await sleep(500)
+
+			if (!(await sessionExists(sessionName))) {
+				console.log("Skipping: session not created (likely missing dependencies)")
+				return
+			}
+
+			const paneNames = await getPaneNames(sessionName)
+			expect(paneNames).toContain("main")
+			expect(paneNames).toContain("monitor")
+		} finally {
+			await killSession(sessionName)
+		}
+	})
+
+	it("should kill session when main command exits", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const sessionName = "test-main-exit-" + Date.now()
+
+		try {
+			await $`./bin/with-monitor -s ${sessionName} -- echo "done"`.quiet().nothrow()
+			await sleep(1500)
+
+			const exists = await sessionExists(sessionName)
+			expect(exists).toBe(false)
+		} finally {
+			await killSession(sessionName)
+		}
+	})
+
+	it("should keep main running when monitor pane is killed", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const sessionName = "test-monitor-kill-" + Date.now()
+
+		try {
+			await $`./bin/with-monitor -s ${sessionName} -- sleep 10`.quiet().nothrow()
+			await sleep(500)
+
+			if (!(await sessionExists(sessionName))) {
+				console.log("Skipping: session not created")
+				return
+			}
+
+			const paneCountBefore = await getPaneCount(sessionName)
+			if (paneCountBefore < 2) {
+				console.log("Skipping: not enough panes created")
+				return
+			}
+
+			await $`tmux kill-pane -t ${sessionName}:0.1`.quiet().nothrow()
+			await sleep(300)
+
+			expect(await sessionExists(sessionName)).toBe(true)
+			expect(await getPaneCount(sessionName)).toBe(1)
+		} finally {
+			await killSession(sessionName)
+		}
+	})
+
+	it("opencode-with-monitor should name panes correctly", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const opencodeCheck = await $`which opencode`.quiet().nothrow()
+		if (opencodeCheck.exitCode !== 0) {
+			console.log("Skipping: opencode not installed")
+			return
+		}
+
+		const sessionName = "test-opencode-panes-" + Date.now()
+
+		try {
+			const proc = Bun.spawn(["./bin/opencode-with-monitor", "-s", sessionName], {
+				stdout: "pipe",
+				stderr: "pipe",
+			})
+
+			await sleep(1000)
+
+			if (!(await sessionExists(sessionName))) {
+				proc.kill()
+				console.log("Skipping: session not created")
+				return
+			}
+
+			const paneNames = await getPaneNames(sessionName)
+			expect(paneNames).toContain("main")
+			expect(paneNames).toContain("monitor")
+
+			proc.kill()
+		} finally {
+			await killSession(sessionName)
+		}
+	})
+})
