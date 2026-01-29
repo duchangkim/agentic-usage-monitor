@@ -2,9 +2,15 @@
 import { loadConfig } from "../config"
 import { createMonitor } from "../monitor"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
-import { progressBarWithThreshold } from "../tui/progress"
-import { boxBottom, boxDivider, boxRow, boxTop, text } from "../tui/renderer"
+import { text } from "../tui/renderer"
 import { ANSI } from "../tui/styles"
+import {
+	type ProfileData,
+	type UsageData,
+	renderApiUsageWidget,
+	renderStatusBar,
+	renderUsageWidget,
+} from "../tui/widget"
 
 const MIN_WIDTH = 28
 const MAX_WIDTH = 60
@@ -106,138 +112,60 @@ ${text("EXAMPLES:", ANSI.fg.yellow)}
 `)
 }
 
-function formatTokens(tokens: number): string {
-	if (tokens >= 1_000_000) {
-		return `${(tokens / 1_000_000).toFixed(2)}M`
+function stateToProfile(state: OAuthMonitorState): ProfileData | null {
+	if (!state.profile) return null
+
+	const { account, organization } = state.profile
+	let planBadge: "ENT" | "MAX" | "PRO" | undefined
+
+	if (organization?.organizationType === "claude_enterprise") {
+		planBadge = "ENT"
+	} else if (account.hasClaudeMax) {
+		planBadge = "MAX"
+	} else if (account.hasClaudePro) {
+		planBadge = "PRO"
 	}
-	if (tokens >= 1_000) {
-		return `${(tokens / 1_000).toFixed(1)}K`
+
+	return {
+		displayName: account.displayName || account.fullName,
+		organization: organization?.name,
+		planBadge,
 	}
-	return tokens.toString()
 }
 
-function formatCost(amount: number, currency: string): string {
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency,
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	}).format(amount)
-}
+function stateToUsage(state: OAuthMonitorState): UsageData | null {
+	if (!state.rateLimits) return null
 
-function formatTimeRemaining(resetTime: Date): string {
-	const now = new Date()
-	const diff = resetTime.getTime() - now.getTime()
-
-	if (diff <= 0) return "now"
-
-	const hours = Math.floor(diff / (1000 * 60 * 60))
-	const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m`
+	return {
+		fiveHour: state.rateLimits.fiveHour
+			? {
+					utilization: state.rateLimits.fiveHour.utilization,
+					resetsAt: state.rateLimits.fiveHour.resetsAt,
+				}
+			: undefined,
+		sevenDay: state.rateLimits.sevenDay
+			? {
+					utilization: state.rateLimits.sevenDay.utilization,
+					resetsAt: state.rateLimits.sevenDay.resetsAt,
+				}
+			: undefined,
 	}
-	return `${minutes}m`
 }
 
 function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string[] {
-	const lines: string[] = []
 	const compact = width < 40
 	const title = compact ? "Rate Limits" : "Claude Rate Limits"
 
-	lines.push(boxTop(width, title, { boxStyle: "rounded" }))
-
-	if (state.profile) {
-		const { account, organization } = state.profile
-		const displayName = account.displayName || account.fullName
-		const truncatedName =
-			displayName.length > width - 10 ? `${displayName.slice(0, width - 13)}...` : displayName
-		lines.push(
-			boxRow(`${text("User:", ANSI.dim)} ${truncatedName}`, width, { boxStyle: "rounded" }),
-		)
-
-		if (organization && !compact) {
-			const orgName =
-				organization.name.length > width - 10
-					? `${organization.name.slice(0, width - 13)}...`
-					: organization.name
-			lines.push(boxRow(`${text("Org:", ANSI.dim)}  ${orgName}`, width, { boxStyle: "rounded" }))
-		}
-
-		let badge = ""
-		if (organization?.organizationType === "claude_enterprise") {
-			badge = text(" ENT", ANSI.fg.cyan)
-		} else if (account.hasClaudeMax) {
-			badge = text(" MAX", ANSI.fg.magenta)
-		} else if (account.hasClaudePro) {
-			badge = text(" PRO", ANSI.fg.green)
-		}
-		if (badge) {
-			lines.push(boxRow(`${text("Plan:", ANSI.dim)}${badge}`, width, { boxStyle: "rounded" }))
-		}
-		lines.push(boxDivider(width, { boxStyle: "rounded" }))
-	}
-
-	if (!state.rateLimits) {
-		if (state.lastError) {
-			lines.push(
-				boxRow(text(state.lastError.slice(0, width - 6), ANSI.fg.red), width, {
-					boxStyle: "rounded",
-				}),
-			)
-		} else {
-			lines.push(boxRow(text("Loading...", ANSI.dim), width, { boxStyle: "rounded" }))
-		}
-	} else {
-		const labelWidth = compact ? 3 : 8
-		const barWidth = Math.max(5, width - labelWidth - 16)
-
-		if (state.rateLimits.fiveHour) {
-			const { utilization, resetsAt } = state.rateLimits.fiveHour
-			const bar = progressBarWithThreshold(utilization, 100, "", {
-				width: barWidth,
-				showPercentage: false,
-				showLabel: false,
-			})
-			const pct = `${Math.round(utilization)}%`.padStart(4)
-			const reset = text(`(${formatTimeRemaining(resetsAt)})`, ANSI.dim)
-			const label = compact ? "5h:" : "5-Hour: "
-			lines.push(boxRow(`${label}${bar} ${pct} ${reset}`, width, { boxStyle: "rounded" }))
-		}
-
-		if (state.rateLimits.sevenDay) {
-			const { utilization, resetsAt } = state.rateLimits.sevenDay
-			const bar = progressBarWithThreshold(utilization, 100, "", {
-				width: barWidth,
-				showPercentage: false,
-				showLabel: false,
-			})
-			const pct = `${Math.round(utilization)}%`.padStart(4)
-			const reset = text(`(${formatTimeRemaining(resetsAt)})`, ANSI.dim)
-			const label = compact ? "7d:" : "7-Day:  "
-			lines.push(boxRow(`${label}${bar} ${pct} ${reset}`, width, { boxStyle: "rounded" }))
-		}
-
-		if (!state.rateLimits.fiveHour && !state.rateLimits.sevenDay) {
-			lines.push(boxRow(text("No limits", ANSI.fg.green), width, { boxStyle: "rounded" }))
-		}
-	}
-
-	if (state.lastFetch) {
-		lines.push(boxDivider(width, { boxStyle: "rounded" }))
-		lines.push(
-			boxRow(text(`Updated: ${state.lastFetch.toLocaleTimeString()}`, ANSI.dim), width, {
-				boxStyle: "rounded",
-			}),
-		)
-	}
-
-	lines.push(boxBottom(width, { boxStyle: "rounded" }))
-
-	return lines
+	return renderUsageWidget(
+		{ title, width, boxStyle: "rounded", compact },
+		stateToProfile(state),
+		stateToUsage(state),
+		state.lastFetch,
+		state.lastError,
+	)
 }
 
-function renderUsageWidget(
+function renderApiWidget(
 	usage: {
 		totalInputTokens: number
 		totalOutputTokens: number
@@ -248,47 +176,17 @@ function renderUsageWidget(
 	} | null,
 	width: number,
 ): string[] {
-	const lines: string[] = []
-	const title = "API Usage (This Month)"
-
-	lines.push(boxTop(width, title, { boxStyle: "rounded" }))
-
-	if (!usage) {
-		lines.push(boxRow(text("No data available", ANSI.dim), width, { boxStyle: "rounded" }))
-		lines.push(boxRow("", width, { boxStyle: "rounded" }))
-		lines.push(boxRow("Configure ANTHROPIC_ADMIN_API_KEY", width, { boxStyle: "rounded" }))
-		lines.push(boxRow("to enable usage tracking.", width, { boxStyle: "rounded" }))
-	} else {
-		const inputStr = `Input:  ${text(formatTokens(usage.totalInputTokens), ANSI.fg.cyan)} tokens`
-		const outputStr = `Output: ${text(formatTokens(usage.totalOutputTokens), ANSI.fg.cyan)} tokens`
-		const costStr = `Cost:   ${text(formatCost(usage.totalCost, "USD"), ANSI.fg.green)}`
-
-		lines.push(boxRow(inputStr, width, { boxStyle: "rounded" }))
-		lines.push(boxRow(outputStr, width, { boxStyle: "rounded" }))
-		lines.push(boxDivider(width, { boxStyle: "rounded" }))
-		lines.push(boxRow(costStr, width, { boxStyle: "rounded" }))
-
-		const lastUpdated = usage.lastUpdated.toLocaleTimeString()
-		lines.push(boxDivider(width, { boxStyle: "rounded" }))
-		lines.push(boxRow(text(`Updated: ${lastUpdated}`, ANSI.dim), width, { boxStyle: "rounded" }))
-	}
-
-	lines.push(boxBottom(width, { boxStyle: "rounded" }))
-
-	return lines
-}
-
-function renderStatusBar(
-	isRunning: boolean,
-	lastError: string | null,
-	refreshInterval: number,
-): string {
-	const status = isRunning ? text("● Running", ANSI.fg.green) : text("○ Stopped", ANSI.dim)
-
-	const interval = `Refresh: ${refreshInterval}s`
-	const error = lastError ? text(` | Error: ${lastError.slice(0, 30)}`, ANSI.fg.red) : ""
-
-	return `${status} | ${interval}${error}`
+	return renderApiUsageWidget(
+		{ title: "API Usage (This Month)", width, boxStyle: "rounded" },
+		usage
+			? {
+					totalInputTokens: usage.totalInputTokens,
+					totalOutputTokens: usage.totalOutputTokens,
+					totalCost: usage.totalCost,
+					lastUpdated: usage.lastUpdated,
+				}
+			: null,
+	)
 }
 
 function clearScreen(): void {
@@ -343,7 +241,7 @@ async function main(): Promise<void> {
 
 		if (apiMonitor) {
 			const usage = await apiMonitor.fetch()
-			outputs.push(renderUsageWidget(usage, width).join("\n"))
+			outputs.push(renderApiWidget(usage, width).join("\n"))
 		}
 
 		if (outputs.length === 0) {
@@ -369,7 +267,7 @@ async function main(): Promise<void> {
 
 		if (apiMonitor) {
 			const state = apiMonitor.getState()
-			outputs.push(renderUsageWidget(state.usage, width).join("\n"))
+			outputs.push(renderApiWidget(state.usage, width).join("\n"))
 		}
 
 		if (outputs.length === 0) {
@@ -383,7 +281,7 @@ async function main(): Promise<void> {
 		const lastError = oauthMonitor?.getState().lastError || apiMonitor?.getState().lastError || null
 
 		console.log("")
-		console.log(renderStatusBar(isRunning, lastError, config.display.refreshInterval))
+		console.log(renderStatusBar(isRunning, lastError, config.display.refreshInterval, width))
 		console.log("")
 		console.log(text("Press Ctrl+C to exit", ANSI.dim))
 	}

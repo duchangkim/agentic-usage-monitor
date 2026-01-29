@@ -50,7 +50,26 @@ export function stripAnsi(str: string): string {
 export function truncate(str: string, maxLength: number, ellipsis = "…"): string {
 	const visible = stripAnsi(str)
 	if (visible.length <= maxLength) return str
-	return str.slice(0, maxLength - ellipsis.length) + ellipsis
+
+	let visibleCount = 0
+	let i = 0
+	const targetLength = maxLength - ellipsis.length
+	const ESC = "\x1b"
+
+	while (i < str.length && visibleCount < targetLength) {
+		if (str[i] === ESC) {
+			const remaining = str.slice(i)
+			const match = remaining.match(ANSI_PATTERN)
+			if (match && remaining.indexOf(match[0]) === 0) {
+				i += match[0].length
+				continue
+			}
+		}
+		visibleCount++
+		i++
+	}
+
+	return str.slice(0, i) + ANSI.reset + ellipsis
 }
 
 export function horizontalLine(width: number, char = "─"): string {
@@ -89,8 +108,11 @@ export function boxRow(content: string, width: number, opts: Partial<RenderOptio
 	const options = { ...DEFAULT_OPTIONS, ...opts }
 	const box = getBoxChars(options.boxStyle)
 	const innerWidth = width - 2 - options.padding * 2
+	const visibleLength = stripAnsi(content).length
+
+	const safeContent = visibleLength > innerWidth ? truncate(content, innerWidth) : content
 	const paddedContent =
-		" ".repeat(options.padding) + pad(content, innerWidth) + " ".repeat(options.padding)
+		" ".repeat(options.padding) + pad(safeContent, innerWidth) + " ".repeat(options.padding)
 	return box.vertical + paddedContent + box.vertical
 }
 
