@@ -1,0 +1,154 @@
+import { afterAll, beforeAll, describe, expect, it } from "bun:test"
+import { assertCli } from "../harness/assertions"
+import { type TestContext, createTestContext, runCli } from "../harness/cli-runner"
+import { type MockServerHandle, startMockServer } from "../mock-server/oauth-server"
+
+describe("TUI Rendering", () => {
+	let mockServer: MockServerHandle
+	let context: TestContext
+
+	beforeAll(async () => {
+		mockServer = await startMockServer({ scenario: "healthy" })
+		context = await createTestContext({ mockServer, scenario: "healthy", termWidth: 52 })
+	})
+
+	afterAll(async () => {
+		await mockServer.stop()
+	})
+
+	it("should render rate limits widget", async () => {
+		const result = await runCli(["--once"], context)
+
+		const assertions = assertCli(result).exitSuccess().hasBoxDrawing().stdoutContains("Rate Limits")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should display progress bars", async () => {
+		const result = await runCli(["--once"], context)
+
+		const assertions = assertCli(result).exitSuccess().hasProgressBar()
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should display utilization percentages", async () => {
+		const result = await runCli(["--once"], context)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("44%").stdoutContains("12%")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should display user info", async () => {
+		const result = await runCli(["--once"], context)
+
+		const assertions = assertCli(result)
+			.exitSuccess()
+			.stdoutContains("User:")
+			.stdoutContains("Test")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should display plan badge for MAX users", async () => {
+		const result = await runCli(["--once"], context)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("MAX")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should display 5-Hour and 7-Day labels", async () => {
+		const result = await runCli(["--once"], context)
+
+		const assertions = assertCli(result)
+			.exitSuccess()
+			.stdoutMatches(/5-Hour|5h:/)
+			.stdoutMatches(/7-Day|7d:/)
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should adapt to narrow terminal width", async () => {
+		const narrowContext = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 30,
+		})
+
+		const result = await runCli(["--once"], narrowContext)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("5h:").stdoutContains("7d:")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+})
+
+describe("TUI Rendering - Different Scenarios", () => {
+	it("should render enterprise org info", async () => {
+		const server = await startMockServer({ scenario: "enterpriseOrg" })
+		const ctx = await createTestContext({
+			mockServer: server,
+			scenario: "enterpriseOrg",
+			termWidth: 60,
+		})
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			const assertions = assertCli(result)
+				.exitSuccess()
+				.stdoutMatches(/Enterprise|ENT/)
+
+			expect(assertions.allPassed()).toBe(true)
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should render PRO badge for pro users", async () => {
+		const server = await startMockServer({ scenario: "lowUsage" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "lowUsage" })
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			const assertions = assertCli(result).exitSuccess().stdoutContains("PRO")
+
+			expect(assertions.allPassed()).toBe(true)
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should handle high usage scenario", async () => {
+		const server = await startMockServer({ scenario: "highUsage" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "highUsage" })
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			const assertions = assertCli(result).exitSuccess().stdoutContains("85%").stdoutContains("78%")
+
+			expect(assertions.allPassed()).toBe(true)
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should handle no limits scenario", async () => {
+		const server = await startMockServer({ scenario: "noLimits" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "noLimits" })
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			const assertions = assertCli(result).exitSuccess().stdoutContains("No limits")
+
+			expect(assertions.allPassed()).toBe(true)
+		} finally {
+			await server.stop()
+		}
+	})
+})

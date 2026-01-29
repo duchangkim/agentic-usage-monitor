@@ -5,7 +5,7 @@ WORKDIR /workspace
 RUN apk add --no-cache git bash
 
 COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN bun install
 
 COPY . .
 

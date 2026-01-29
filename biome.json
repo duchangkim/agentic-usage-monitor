@@ -39,5 +39,20 @@
 	},
 	"files": {
 		"ignore": ["node_modules", "dist", "*.lock", "bun.lock"]
-	}
+	},
+	"overrides": [
+		{
+			"include": ["test/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsoleLog": "off"
+					},
+					"style": {
+						"useTemplate": "off"
+					}
+				}
+			}
+		}
+	]
 }

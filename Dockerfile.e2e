@@ -1,0 +1,26 @@
+FROM oven/bun:1.1-alpine
+
+WORKDIR /workspace
+
+RUN apk add --no-cache \
+    git \
+    bash \
+    tmux \
+    ncurses \
+    expect
+
+COPY package.json bun.lock* ./
+RUN bun install
+
+COPY . .
+
+RUN bun run build
+
+ENV NODE_ENV=test
+ENV TERM=xterm-256color
+ENV DOCKER=true
+ENV CI=true
+ENV COLUMNS=80
+ENV LINES=24
+
+CMD ["bun", "test", "test/e2e"]

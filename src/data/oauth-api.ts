@@ -1,6 +1,6 @@
 import { type OAuthCredentials, loadOAuthCredentials } from "./oauth-credentials"
 
-const OAUTH_API_BASE = "https://api.anthropic.com/api/oauth"
+const OAUTH_API_BASE = process.env.OAUTH_API_BASE ?? "https://api.anthropic.com/api/oauth"
 const ANTHROPIC_BETA_VERSION = "oauth-2025-04-20"
 
 export interface RateLimitWindow {

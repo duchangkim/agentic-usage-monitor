@@ -36,6 +36,69 @@ services:
       - build_cache:/workspace/dist
     command: ["bun", "run", "build"]
 
+  e2e:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    volumes:
+      - .:/workspace
+      - e2e_node_modules:/workspace/node_modules
+      - ./test-results:/workspace/test-results
+    working_dir: /workspace
+    environment:
+      - CI=true
+      - DOCKER=true
+      - COLUMNS=80
+      - LINES=24
+      - TERM=xterm-256color
+    stdin_open: true
+    tty: true
+    command: ["bun", "test", "test/e2e"]
+
+  e2e-report:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    volumes:
+      - .:/workspace
+      - e2e_node_modules:/workspace/node_modules
+      - ./test-results:/workspace/test-results
+    working_dir: /workspace
+    environment:
+      - CI=true
+      - DOCKER=true
+    command: ["bun", "run", "test:e2e:report"]
+
+  e2e-shell:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    volumes:
+      - .:/workspace
+      - e2e_node_modules:/workspace/node_modules
+    working_dir: /workspace
+    environment:
+      - DOCKER=true
+      - TERM=xterm-256color
+    stdin_open: true
+    tty: true
+    command: ["sh"]
+
+  mock-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    volumes:
+      - .:/workspace:ro
+    ports:
+      - "8765:8765"
+    environment:
+      - PORT=8765
+      - SCENARIO=healthy
+      - VERBOSE=true
+    command: ["bun", "run", "test/mock-server/oauth-server.ts"]
+
 volumes:
   node_modules:
   build_cache:
+  e2e_node_modules:

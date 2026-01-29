@@ -144,7 +144,51 @@ function loadFromClaudeCode(): LoadCredentialsResult {
 	}
 }
 
+function loadFromTestCredentials(): LoadCredentialsResult {
+	const testPath = process.env.TEST_CREDENTIALS_PATH
+	if (!testPath) {
+		return { success: false, error: "test-path-not-set" }
+	}
+
+	if (!existsSync(testPath)) {
+		return { success: false, error: "test-credentials-not-found" }
+	}
+
+	try {
+		const content = readFileSync(testPath, "utf-8")
+		const parsed = JSON.parse(content) as {
+			access_token?: string
+			refresh_token?: string
+			expires_at?: number
+		}
+
+		if (!parsed.access_token) {
+			return { success: false, error: "No access_token in test credentials file." }
+		}
+
+		return {
+			success: true,
+			credentials: {
+				accessToken: parsed.access_token,
+				refreshToken: parsed.refresh_token,
+				expiresAt: parsed.expires_at ? new Date(parsed.expires_at).toISOString() : undefined,
+				scopes: undefined,
+			},
+			source: "opencode",
+		}
+	} catch (error) {
+		return {
+			success: false,
+			error: `Failed to parse test credentials: ${error instanceof Error ? error.message : String(error)}`,
+		}
+	}
+}
+
 export function loadOAuthCredentials(): LoadCredentialsResult {
+	if (process.env.TEST_CREDENTIALS_PATH) {
+		return loadFromTestCredentials()
+	}
+
 	const openCodeResult = loadFromOpenCode()
 	if (openCodeResult.success) return openCodeResult
 
