@@ -6,12 +6,12 @@ import { progressBarWithThreshold } from "../tui/progress"
 import { boxBottom, boxDivider, boxRow, boxTop, text } from "../tui/renderer"
 import { ANSI } from "../tui/styles"
 
-const MIN_WIDTH = 40
-const MAX_WIDTH = 80
+const MIN_WIDTH = 28
+const MAX_WIDTH = 60
 
 function getTerminalWidth(): number {
-	const cols = process.stdout.columns || 80
-	return Math.max(MIN_WIDTH, Math.min(cols - 2, MAX_WIDTH))
+	const cols = process.stdout.columns || 40
+	return Math.max(MIN_WIDTH, Math.min(cols - 1, MAX_WIDTH))
 }
 
 interface CliArgs {
@@ -142,31 +142,38 @@ function formatTimeRemaining(resetTime: Date): string {
 
 function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string[] {
 	const lines: string[] = []
-	const title = "Claude Rate Limits"
+	const compact = width < 40
+	const title = compact ? "Rate Limits" : "Claude Rate Limits"
 
 	lines.push(boxTop(width, title, { boxStyle: "rounded" }))
 
 	if (state.profile) {
 		const { account, organization } = state.profile
 		const displayName = account.displayName || account.fullName
-		lines.push(boxRow(`${text("User:", ANSI.dim)} ${displayName}`, width, { boxStyle: "rounded" }))
+		const truncatedName =
+			displayName.length > width - 10 ? `${displayName.slice(0, width - 13)}...` : displayName
+		lines.push(
+			boxRow(`${text("User:", ANSI.dim)} ${truncatedName}`, width, { boxStyle: "rounded" }),
+		)
 
-		if (organization) {
-			lines.push(
-				boxRow(`${text("Org:", ANSI.dim)}  ${organization.name}`, width, { boxStyle: "rounded" }),
-			)
+		if (organization && !compact) {
+			const orgName =
+				organization.name.length > width - 10
+					? `${organization.name.slice(0, width - 13)}...`
+					: organization.name
+			lines.push(boxRow(`${text("Org:", ANSI.dim)}  ${orgName}`, width, { boxStyle: "rounded" }))
+		}
 
-			let badge = ""
-			if (organization.organizationType === "claude_enterprise") {
-				badge = text(" ENTERPRISE", ANSI.fg.cyan)
-			} else if (account.hasClaudeMax) {
-				badge = text(" MAX", ANSI.fg.magenta)
-			} else if (account.hasClaudePro) {
-				badge = text(" PRO", ANSI.fg.green)
-			}
-			if (badge) {
-				lines.push(boxRow(`${text("Plan:", ANSI.dim)}${badge}`, width, { boxStyle: "rounded" }))
-			}
+		let badge = ""
+		if (organization?.organizationType === "claude_enterprise") {
+			badge = text(" ENT", ANSI.fg.cyan)
+		} else if (account.hasClaudeMax) {
+			badge = text(" MAX", ANSI.fg.magenta)
+		} else if (account.hasClaudePro) {
+			badge = text(" PRO", ANSI.fg.green)
+		}
+		if (badge) {
+			lines.push(boxRow(`${text("Plan:", ANSI.dim)}${badge}`, width, { boxStyle: "rounded" }))
 		}
 		lines.push(boxDivider(width, { boxStyle: "rounded" }))
 	}
@@ -182,7 +189,8 @@ function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string
 			lines.push(boxRow(text("Loading...", ANSI.dim), width, { boxStyle: "rounded" }))
 		}
 	} else {
-		const barWidth = width - 24
+		const labelWidth = compact ? 3 : 8
+		const barWidth = Math.max(5, width - labelWidth - 16)
 
 		if (state.rateLimits.fiveHour) {
 			const { utilization, resetsAt } = state.rateLimits.fiveHour
@@ -193,7 +201,8 @@ function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string
 			})
 			const pct = `${Math.round(utilization)}%`.padStart(4)
 			const reset = text(`(${formatTimeRemaining(resetsAt)})`, ANSI.dim)
-			lines.push(boxRow(`5-Hour:  ${bar} ${pct} ${reset}`, width, { boxStyle: "rounded" }))
+			const label = compact ? "5h:" : "5-Hour: "
+			lines.push(boxRow(`${label}${bar} ${pct} ${reset}`, width, { boxStyle: "rounded" }))
 		}
 
 		if (state.rateLimits.sevenDay) {
@@ -205,13 +214,12 @@ function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string
 			})
 			const pct = `${Math.round(utilization)}%`.padStart(4)
 			const reset = text(`(${formatTimeRemaining(resetsAt)})`, ANSI.dim)
-			lines.push(boxRow(`7-Day:   ${bar} ${pct} ${reset}`, width, { boxStyle: "rounded" }))
+			const label = compact ? "7d:" : "7-Day:  "
+			lines.push(boxRow(`${label}${bar} ${pct} ${reset}`, width, { boxStyle: "rounded" }))
 		}
 
 		if (!state.rateLimits.fiveHour && !state.rateLimits.sevenDay) {
-			lines.push(
-				boxRow(text("No active rate limits", ANSI.fg.green), width, { boxStyle: "rounded" }),
-			)
+			lines.push(boxRow(text("No limits", ANSI.fg.green), width, { boxStyle: "rounded" }))
 		}
 	}
 
