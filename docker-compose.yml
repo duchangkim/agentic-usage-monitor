@@ -1,0 +1,41 @@
+services:
+  dev:
+    build: .
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: ["sh"]
+
+  verify:
+    build: .
+    volumes:
+      - .:/workspace:ro
+      - build_cache:/workspace/dist
+    working_dir: /workspace
+    command: ["sh", "-c", "bun run typecheck && bun run lint && bun run build"]
+
+  typecheck:
+    build: .
+    volumes:
+      - .:/workspace:ro
+    command: ["bun", "run", "typecheck"]
+
+  lint:
+    build: .
+    volumes:
+      - .:/workspace:ro
+    command: ["bun", "run", "lint"]
+
+  build:
+    build: .
+    volumes:
+      - .:/workspace:ro
+      - build_cache:/workspace/dist
+    command: ["bun", "run", "build"]
+
+volumes:
+  node_modules:
+  build_cache:
