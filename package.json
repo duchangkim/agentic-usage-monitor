@@ -16,6 +16,7 @@
 		"build": "bun build src/index.ts --outdir dist --target bun && bun build src/cli/index.ts --outfile dist/cli.js --target bun",
 		"build:cli": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
 		"dev": "bun build src/index.ts --outdir dist --target bun --watch",
+		"dev:plugin": "mkdir -p plugin-test/.opencode/plugins && bun build src/index.ts --outfile plugin-test/.opencode/plugins/usage-monitor.js --target bun --watch",
 		"dev:install": "bun run build && bun run install:local",
 		"cli": "bun run src/cli/index.ts",
 		"cli:once": "bun run src/cli/index.ts --once",

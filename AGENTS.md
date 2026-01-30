@@ -5,6 +5,7 @@
 Real-time Claude rate limit monitoring tool that runs alongside OpenCode using tmux.
 
 **Core Features:**
+
 - OAuth-based rate limit tracking (5-hour, 7-day windows)
 - Profile info display (user, organization, plan badges)
 - Optional Admin API usage/cost tracking for organizations
@@ -121,12 +122,12 @@ opencode-usage-monitor/
 
 ### E2E Test Categories
 
-| Category | File | Coverage |
-|----------|------|----------|
-| CLI Arguments | `cli.test.ts` | --help, --once, --oauth-only flags |
-| TUI Rendering | `tui.test.ts` | Box drawing, progress bars, responsive layout |
-| API Handling | `api.test.ts` | Success, 401, 429, 500 responses |
-| tmux Integration | `tmux.test.ts` | Session creation, pane capture |
+| Category         | File           | Coverage                                      |
+| ---------------- | -------------- | --------------------------------------------- |
+| CLI Arguments    | `cli.test.ts`  | --help, --once, --oauth-only flags            |
+| TUI Rendering    | `tui.test.ts`  | Box drawing, progress bars, responsive layout |
+| API Handling     | `api.test.ts`  | Success, 401, 429, 500 responses              |
+| tmux Integration | `tmux.test.ts` | Session creation, pane capture                |
 
 ### Running E2E Tests
 
@@ -146,17 +147,17 @@ cat test-results/report.json
 
 Available scenarios for testing different states:
 
-| Scenario | Description |
-|----------|-------------|
-| `healthy` | Normal usage (44% 5h, 12% 7d) |
-| `lowUsage` | Low usage, PRO user |
-| `highUsage` | Near limits (85% 5h, 78% 7d) |
-| `rateLimited` | 429 error response |
-| `authError` | 401 error response |
-| `enterpriseOrg` | Enterprise organization user |
-| `noLimits` | No rate limits active |
-| `slowResponse` | 3 second delay |
-| `serverError` | 500 error response |
+| Scenario        | Description                   |
+| --------------- | ----------------------------- |
+| `healthy`       | Normal usage (44% 5h, 12% 7d) |
+| `lowUsage`      | Low usage, PRO user           |
+| `highUsage`     | Near limits (85% 5h, 78% 7d)  |
+| `rateLimited`   | 429 error response            |
+| `authError`     | 401 error response            |
+| `enterpriseOrg` | Enterprise organization user  |
+| `noLimits`      | No rate limits active         |
+| `slowResponse`  | 3 second delay                |
+| `serverError`   | 500 error response            |
 
 ## Agent Verification Workflow
 
@@ -221,6 +222,29 @@ cat test-results/report.json | jq '.scenarios[] | select(.name == "once_healthy"
 }
 ```
 
+## OpenCode Plugin Testing
+
+This project is an OpenCode plugin. Test in `plugin-test/` directory which uses project-level config.
+
+### Setup & Test
+
+```bash
+# Start watch mode (auto-rebuilds on source changes)
+bun run dev:plugin
+
+# In another terminal, test in isolated directory
+cd plugin-test
+opencode run "/rate_limits"
+opencode run "/monitor help"
+```
+
+### How It Works
+
+1. `bun run dev:plugin` builds to `plugin-test/.opencode/plugins/usage-monitor.js` with watch mode
+2. OpenCode auto-loads plugins from `.opencode/plugins/` directory (no config needed)
+3. Project-level config takes priority over global `~/.config/opencode/`
+4. `plugin-test/` is gitignored - isolated from development environment
+
 ## Code Style Guidelines
 
 ### TypeScript
@@ -231,13 +255,13 @@ cat test-results/report.json | jq '.scenarios[] | select(.name == "once_healthy"
 
 // GOOD: Explicit types for public APIs
 export interface UsageData {
-  fiveHour: RateLimitWindow | null
-  sevenDay: RateLimitWindow | null
+  fiveHour: RateLimitWindow | null;
+  sevenDay: RateLimitWindow | null;
 }
 
 // BAD: Avoid 'any'
-function process(data: any) { }  // Never
-function process(data: unknown) { }  // Prefer, then narrow
+function process(data: any) {} // Never
+function process(data: unknown) {} // Prefer, then narrow
 ```
 
 ### Imports
@@ -246,10 +270,10 @@ function process(data: unknown) { }  // Prefer, then narrow
 // Order: 1) Node builtins, 2) External packages, 3) Relative imports
 // Use type imports when importing only types
 
-import { existsSync } from "node:fs"
-import { z } from "zod"
-import type { Config } from "./schema"
-import { loadConfig } from "./loader"
+import { existsSync } from "node:fs";
+import { z } from "zod";
+import type { Config } from "./schema";
+import { loadConfig } from "./loader";
 ```
 
 ### Error Handling
@@ -258,13 +282,13 @@ import { loadConfig } from "./loader"
 // Use Result types for expected failures
 export type OAuthApiResult<T> =
   | { success: true; data: T }
-  | { success: false; error: OAuthApiError }
+  | { success: false; error: OAuthApiError };
 
 // GOOD: Explicit error handling
-const result = await api.getUsage()
+const result = await api.getUsage();
 if (!result.success) {
   // Handle error
-  return
+  return;
 }
 // Use result.data
 ```
@@ -275,27 +299,28 @@ Testability hooks via environment variables:
 
 ```typescript
 // Production code should support test overrides
-const OAUTH_API_BASE = process.env.OAUTH_API_BASE ?? "https://api.anthropic.com/api/oauth"
+const OAUTH_API_BASE =
+  process.env.OAUTH_API_BASE ?? "https://api.anthropic.com/api/oauth";
 ```
 
 ## Docker Services
 
-| Service | Purpose | Command |
-|---------|---------|---------|
-| `e2e` | Run E2E tests | `docker compose run --rm e2e` |
-| `e2e-report` | Generate JSON report | `docker compose run --rm e2e-report` |
-| `e2e-shell` | Debug shell | `docker compose run --rm e2e-shell` |
-| `mock-server` | Standalone mock server | `docker compose up mock-server` |
-| `verify` | Static analysis | `docker compose run --rm verify` |
+| Service       | Purpose                | Command                              |
+| ------------- | ---------------------- | ------------------------------------ |
+| `e2e`         | Run E2E tests          | `docker compose run --rm e2e`        |
+| `e2e-report`  | Generate JSON report   | `docker compose run --rm e2e-report` |
+| `e2e-shell`   | Debug shell            | `docker compose run --rm e2e-shell`  |
+| `mock-server` | Standalone mock server | `docker compose up mock-server`      |
+| `verify`      | Static analysis        | `docker compose run --rm verify`     |
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_ADMIN_API_KEY` | No | Admin API key for org usage |
-| `USAGE_MONITOR_REFRESH_INTERVAL` | No | Refresh interval (default: 30s) |
-| `USAGE_MONITOR_SESSION` | No | tmux session name |
-| `USAGE_MONITOR_WIDTH` | No | Monitor pane width % |
+| Variable                         | Required | Description                     |
+| -------------------------------- | -------- | ------------------------------- |
+| `ANTHROPIC_ADMIN_API_KEY`        | No       | Admin API key for org usage     |
+| `USAGE_MONITOR_REFRESH_INTERVAL` | No       | Refresh interval (default: 30s) |
+| `USAGE_MONITOR_SESSION`          | No       | tmux session name               |
+| `USAGE_MONITOR_WIDTH`            | No       | Monitor pane width %            |
 
 Test-only variables:
 | Variable | Description |
