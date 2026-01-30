@@ -1,102 +1,102 @@
 import type { Hooks, Plugin, PluginInput } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
-import { createOAuthApi } from "./data"
 
-function formatResetTime(resetDate: Date): string {
-	const now = new Date()
-	const diff = resetDate.getTime() - now.getTime()
-	if (diff <= 0) return "now"
-	const hours = Math.floor(diff / (1000 * 60 * 60))
-	const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-	if (hours > 0) return `${hours}h ${minutes}m`
-	return `${minutes}m`
+const MONITOR_PANE_TITLE = "usage-monitor"
+
+function isInTmux(): boolean {
+	return Boolean(process.env.TMUX)
+}
+
+function isTmuxInstalled(): boolean {
+	const result = Bun.spawnSync(["which", "tmux"])
+	return result.exitCode === 0
+}
+
+function getMonitorPaneId(): string | null {
+	const result = Bun.spawnSync(["tmux", "list-panes", "-F", "#{pane_id}:#{pane_title}"])
+	if (result.exitCode !== 0) return null
+
+	const lines = result.stdout.toString().trim().split("\n")
+	for (const line of lines) {
+		if (line.includes(MONITOR_PANE_TITLE)) {
+			const paneId = line.split(":")[0]
+			if (paneId) return paneId
+		}
+	}
+	return null
+}
+
+function createMonitorPane(): { success: boolean; message: string } {
+	const result = Bun.spawnSync([
+		"tmux",
+		"split-window",
+		"-h",
+		"-l",
+		"25%",
+		"-t",
+		"{right}",
+		"usage-monitor",
+	])
+
+	if (result.exitCode !== 0) {
+		const retryResult = Bun.spawnSync(["tmux", "split-window", "-h", "-l", "25%", "usage-monitor"])
+
+		if (retryResult.exitCode !== 0) {
+			return {
+				success: false,
+				message: `Failed to create pane: ${retryResult.stderr.toString()}`,
+			}
+		}
+	}
+
+	Bun.spawnSync(["tmux", "select-pane", "-T", MONITOR_PANE_TITLE, "-t", "{last}"])
+
+	Bun.spawnSync(["tmux", "select-pane", "-t", "{left}"])
+
+	return { success: true, message: "Monitor pane created" }
+}
+
+function closeMonitorPane(paneId: string): { success: boolean; message: string } {
+	const result = Bun.spawnSync(["tmux", "kill-pane", "-t", paneId])
+
+	if (result.exitCode !== 0) {
+		return {
+			success: false,
+			message: `Failed to close pane: ${result.stderr.toString()}`,
+		}
+	}
+
+	return { success: true, message: "Monitor pane closed" }
 }
 
 export const UsageMonitorPlugin: Plugin = async (_ctx: PluginInput) => {
 	return {
 		tool: {
-			rate_limits: tool({
-				description: "Show Claude rate limits (5-hour and 7-day usage windows)",
-				args: {},
-				async execute() {
-					const api = createOAuthApi()
-					const result = await api.getRateLimitSummary()
-
-					if (!result.success) {
-						if (result.error.type === "credentials_error") {
-							return `Error: ${result.error.message}\n\nRun 'opencode auth login' to authenticate.`
-						}
-						return `Error: ${result.error.message}`
-					}
-
-					const { usage, profile } = result.data
-					const lines: string[] = []
-
-					const { account, organization } = profile
-					lines.push(`User: ${account.displayName || account.fullName}`)
-					if (organization) {
-						lines.push(`Org:  ${organization.name}`)
-						const plan =
-							organization.organizationType === "claude_enterprise"
-								? "Enterprise"
-								: account.hasClaudeMax
-									? "Max"
-									: account.hasClaudePro
-										? "Pro"
-										: "Free"
-						lines.push(`Plan: ${plan}`)
-					}
-					lines.push("")
-
-					const { fiveHour, sevenDay } = usage
-
-					if (fiveHour) {
-						const resetIn = formatResetTime(fiveHour.resetsAt)
-						lines.push(`5-Hour:  ${fiveHour.utilization.toFixed(1)}% used (resets in ${resetIn})`)
-					}
-
-					if (sevenDay) {
-						const resetIn = formatResetTime(sevenDay.resetsAt)
-						lines.push(`7-Day:   ${sevenDay.utilization.toFixed(1)}% used (resets in ${resetIn})`)
-					}
-
-					if (!fiveHour && !sevenDay) {
-						lines.push("No active rate limits")
-					}
-
-					return lines.join("\n")
-				},
-			}),
-
 			monitor: tool({
-				description:
-					"Check tmux monitor status and get setup instructions for running usage monitor alongside opencode",
+				description: "Toggle usage monitor pane in tmux, check status, or get setup instructions",
 				args: {
 					action: tool.schema
-						.enum(["status", "setup", "help"])
-						.default("status")
+						.enum(["toggle", "status", "setup", "help"])
+						.default("toggle")
 						.describe(
-							"Action: status (check current state), setup (show setup guide), help (show usage)",
+							"Action: toggle (show/hide monitor pane), status (check state), setup (installation guide), help (usage)",
 						),
 				},
 				async execute(args) {
 					if (args.action === "help") {
 						return `Usage Monitor - tmux Integration
 
-The usage monitor runs in a separate tmux pane alongside opencode,
-showing real-time rate limits and API usage.
+Toggle a real-time rate limit monitor pane alongside OpenCode.
 
 COMMANDS:
+  /monitor toggle  - Show or hide the monitor pane
   /monitor status  - Check if tmux and monitor are running
   /monitor setup   - Show setup instructions
   /monitor help    - Show this help
 
-QUICK START:
-  1. Exit opencode (or open a new terminal)
-  2. Run: opencode-with-monitor
-  3. The monitor will appear in a side pane
-
-For more details, run: /monitor setup`
+REQUIREMENTS:
+  - Must be running inside tmux session
+  - usage-monitor CLI must be installed globally`
 					}
 
 					if (args.action === "setup") {
@@ -105,80 +105,86 @@ For more details, run: /monitor setup`
 STEP 1: Install tmux (if not installed)
   macOS:  brew install tmux
   Ubuntu: sudo apt install tmux
-  Fedora: sudo dnf install tmux
 
 STEP 2: Install usage-monitor globally
   bun install -g opencode-usage-monitor
 
-STEP 3: Start opencode with monitor
-  opencode-with-monitor
+STEP 3: Start opencode inside tmux
+  tmux new-session -s dev
+  opencode
 
-OPTIONS:
-  -w 30           # Monitor width 30% (default: 25%)
-  -l              # Monitor on left side
-  -s myproject    # Custom session name
-  -- --model opus # Pass args to opencode
+STEP 4: Toggle the monitor
+  Ask: "show the rate limit monitor"
+  Or use: /monitor toggle
 
-EXAMPLE LAYOUT:
+LAYOUT:
   ┌─────────────────────────────┬──────────┐
   │                             │ Monitor  │
   │      opencode (main)        │ ──────── │
   │                             │ 5h: 44%  │
   │                             │ 7d: 4%   │
-  └─────────────────────────────┴──────────┘
-
-TMUX BASICS:
-  Ctrl+b %    Split pane horizontally
-  Ctrl+b o    Switch between panes
-  Ctrl+b x    Close current pane
-  Ctrl+b d    Detach from session
-  tmux attach Reattach to session`
+  └─────────────────────────────┴──────────┘`
 					}
 
-					const lines: string[] = ["Usage Monitor Status", ""]
+					if (!isTmuxInstalled()) {
+						return `Error: tmux is not installed.
 
-					try {
-						const tmuxWhich = Bun.spawnSync(["which", "tmux"])
-						const tmuxInstalled = tmuxWhich.exitCode === 0
+Install tmux first:
+  macOS:  brew install tmux
+  Ubuntu: sudo apt install tmux
 
-						if (tmuxInstalled) {
-							lines.push("✓ tmux is installed")
+Then run: /monitor setup`
+					}
 
-							const inTmux = Boolean(process.env.TMUX)
-							if (inTmux) {
-								lines.push("✓ Running inside tmux session")
-								const sessionProc = Bun.spawnSync(["tmux", "display-message", "-p", "#S"])
-								if (sessionProc.exitCode === 0) {
-									lines.push(`  Session: ${sessionProc.stdout.toString().trim()}`)
-								}
-							} else {
-								lines.push("○ Not running inside tmux")
-								lines.push("  Run 'opencode-with-monitor' to start with monitor")
-							}
+					if (!isInTmux()) {
+						return `Error: Not running inside tmux session.
 
-							const sessionsProc = Bun.spawnSync(["tmux", "list-sessions"])
-							if (sessionsProc.exitCode === 0) {
-								const sessionsOutput = sessionsProc.stdout.toString().trim()
-								if (sessionsOutput) {
-									lines.push("")
-									lines.push("Active tmux sessions:")
-									for (const session of sessionsOutput.split("\n")) {
-										lines.push(`  ${session}`)
-									}
-								}
-							}
-						} else {
-							lines.push("✗ tmux is not installed")
-							lines.push("  Install: brew install tmux (macOS)")
+Start a tmux session first:
+  tmux new-session -s dev
+  opencode
+
+Then use /monitor toggle to show the rate limit pane.`
+					}
+
+					if (args.action === "status") {
+						const lines: string[] = ["Usage Monitor Status", ""]
+						lines.push("✓ tmux is installed")
+						lines.push("✓ Running inside tmux session")
+
+						const sessionProc = Bun.spawnSync(["tmux", "display-message", "-p", "#S"])
+						if (sessionProc.exitCode === 0) {
+							lines.push(`  Session: ${sessionProc.stdout.toString().trim()}`)
 						}
-					} catch {
-						lines.push("✗ Could not check tmux status")
+
+						const monitorPaneId = getMonitorPaneId()
+						if (monitorPaneId) {
+							lines.push("")
+							lines.push("✓ Monitor pane is active")
+							lines.push("  Use '/monitor toggle' to hide it")
+						} else {
+							lines.push("")
+							lines.push("○ Monitor pane is not active")
+							lines.push("  Use '/monitor toggle' to show it")
+						}
+
+						return lines.join("\n")
 					}
 
-					lines.push("")
-					lines.push("Run '/monitor setup' for installation guide")
+					const existingPaneId = getMonitorPaneId()
 
-					return lines.join("\n")
+					if (existingPaneId) {
+						const result = closeMonitorPane(existingPaneId)
+						if (result.success) {
+							return "Monitor pane closed."
+						}
+						return `Error: ${result.message}`
+					}
+
+					const result = createMonitorPane()
+					if (result.success) {
+						return "Monitor pane opened. Real-time rate limits are now visible on the right."
+					}
+					return `Error: ${result.message}`
 				},
 			}),
 		},

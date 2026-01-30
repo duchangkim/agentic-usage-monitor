@@ -33,7 +33,7 @@ opencode-with-monitor
 - **Profile Info**: User, organization, and plan badges (Pro/Max/Enterprise)
 - **Auto-refresh**: Updates every 30 seconds
 - **tmux Integration**: Seamless side-by-side with OpenCode
-- **Plugin Tools**: `/rate_limits` and `/monitor` commands in OpenCode
+- **Plugin Toggle**: `/monitor toggle` to show/hide monitor pane from within OpenCode
 
 ## Installation
 
@@ -114,14 +114,16 @@ with-monitor -s myproject -- opencode # custom session name
 
 ### Inside OpenCode (Plugin Commands)
 
-Once opencode is running with the plugin:
+Once opencode is running inside tmux with the plugin:
 
 ```
-/rate_limits              # Show current rate limits
+/monitor toggle           # Show/hide the rate limit monitor pane
 /monitor status           # Check tmux/monitor status
 /monitor setup            # Show setup instructions
 /monitor help             # Show help
 ```
+
+Or simply ask the agent: "show the rate limit monitor"
 
 ## tmux Basics
 

@@ -229,21 +229,44 @@ This project is an OpenCode plugin. Test in `plugin-test/` directory which uses 
 ### Setup & Test
 
 ```bash
+# Install CLI globally (required for monitor pane)
+bun link
+
 # Start watch mode (auto-rebuilds on source changes)
 bun run dev:plugin
 
-# In another terminal, test in isolated directory
+# In another terminal, test in tmux
+tmux new-session -s dev
 cd plugin-test
-opencode run "/rate_limits"
-opencode run "/monitor help"
+opencode
+
+# Inside OpenCode, ask agent to toggle monitor:
+# "show the rate limit monitor"
+# Or test directly:
+opencode run "/monitor toggle"
+opencode run "/monitor status"
 ```
+
+### Plugin Commands
+
+| Command | Description |
+|---------|-------------|
+| `/monitor toggle` | Show/hide the rate limit monitor pane |
+| `/monitor status` | Check tmux and monitor status |
+| `/monitor setup` | Show installation instructions |
+| `/monitor help` | Show usage help |
 
 ### How It Works
 
 1. `bun run dev:plugin` builds to `plugin-test/.opencode/plugins/usage-monitor.js` with watch mode
 2. OpenCode auto-loads plugins from `.opencode/plugins/` directory (no config needed)
-3. Project-level config takes priority over global `~/.config/opencode/`
+3. `/monitor toggle` creates/removes a tmux pane running `usage-monitor` CLI
 4. `plugin-test/` is gitignored - isolated from development environment
+
+### Requirements
+
+- Must be running inside tmux session for toggle to work
+- `usage-monitor` CLI must be installed globally (`bun link` or `bun install -g`)
 
 ## Code Style Guidelines
 
