@@ -72,6 +72,7 @@ The following are explicitly **out of scope**:
 Developers who use [OpenCode](https://github.com/opencode-ai/opencode) as their terminal-based AI coding assistant.
 
 **Characteristics**:
+
 - Comfortable with terminal and tmux
 - Use Claude (Pro/Max) subscription
 - Want persistent rate limit visibility
@@ -90,6 +91,7 @@ Developers using Anthropic's official Claude Code CLI.
 **Goal**: User must be able to check their current rate limit status at a glance.
 
 **Required Information**:
+
 - Current utilization percentage for each rate limit window (5-hour, 7-day, etc.)
 - Time remaining until each window resets
 - User profile information (name, organization, plan type)
@@ -99,6 +101,7 @@ Developers using Anthropic's official Claude Code CLI.
 ### 6.2 Display Modes
 
 #### Pane Mode
+
 **Goal**: Dedicated space for detailed usage information.
 
 - User can position the monitor pane in any direction (top/bottom/left/right)
@@ -106,6 +109,7 @@ Developers using Anthropic's official Claude Code CLI.
 - Must not interfere with the main terminal workflow
 
 #### Compact Mode (Status Bar)
+
 **Goal**: Minimal single-line display that doesn't interfere with terminal usage.
 
 - Display essential usage info in tmux status bar
@@ -117,6 +121,7 @@ Developers using Anthropic's official Claude Code CLI.
 **Goal**: Users can control the monitor from within OpenCode using natural commands.
 
 **Required Capabilities**:
+
 - Toggle monitor visibility (show/hide)
 - Check current status
 - Get setup help
@@ -128,6 +133,7 @@ Developers using Anthropic's official Claude Code CLI.
 **Goal**: One-command startup with monitor pre-configured.
 
 **Required Capabilities**:
+
 - Start OpenCode (or any command) with monitor already visible
 - Configure position and size via command-line options
 - Handle existing session conflicts gracefully
@@ -137,6 +143,7 @@ Developers using Anthropic's official Claude Code CLI.
 **Goal**: Sensible defaults with customization options for power users.
 
 **Configurable Aspects**:
+
 - Refresh interval
 - Display position and mode
 - Visual styling preferences
@@ -149,29 +156,30 @@ Developers using Anthropic's official Claude Code CLI.
 ### 7.1 Component Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    agentic-usage-monitor                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
+┌────────────────────────────────────────────────────────────┐
+│                    agentic-usage-monitor                   │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
 │  ┌─────────────────┐     ┌─────────────────────────────┐   │
 │  │   CLI           │     │   OpenCode Plugin           │   │
 │  │   (standalone)  │◄────│   (tmux control)            │   │
 │  └────────┬────────┘     └─────────────────────────────┘   │
-│           │                                                 │
+│           │                                                │
 │  ┌────────▼────────┐     ┌─────────────────────────────┐   │
 │  │   Monitor Core  │────►│   Provider Interface        │   │
 │  │   (scheduling,  │     │                             │   │
 │  │    state mgmt)  │     │   - Claude Provider (v1)    │   │
 │  └─────────────────┘     │   - Future providers...     │   │
 │                          └─────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────┘
 ```
 
 ### 7.2 Provider Interface
 
 **Goal**: Enable future support for multiple AI agent providers without major refactoring.
 
-**Design Principle**: 
+**Design Principle**:
+
 - Each provider handles its own authentication and API communication
 - Common interface for usage data regardless of provider
 - v1 implements Claude only; interface design should not over-engineer for hypothetical providers
@@ -222,6 +230,7 @@ The following features from the current implementation will be **removed**:
 **Reason**: Complexity reduction. Focus on personal rate limits.
 
 **Removed Components**:
+
 - `src/data/admin-api.ts`
 - `--api-only` CLI flag
 - Organization billing/cost display
