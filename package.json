@@ -1,7 +1,7 @@
 {
-	"name": "opencode-usage-monitor",
+	"name": "agentic-usage-monitor",
 	"version": "0.1.0",
-	"description": "OpenCode plugin for monitoring Claude rate limits and usage",
+	"description": "Real-time Claude rate limit monitoring tool for AI coding agents",
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -45,7 +45,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/user/opencode-usage-monitor"
+		"url": "https://github.com/user/agentic-usage-monitor"
 	},
 	"dependencies": {
 		"zod": "^3.24.0"
