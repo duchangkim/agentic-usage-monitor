@@ -1,16 +1,9 @@
 #!/usr/bin/env bun
 import { loadConfig } from "../config"
-import { createMonitor } from "../monitor"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
 import { text } from "../tui/renderer"
 import { ANSI } from "../tui/styles"
-import {
-	type ProfileData,
-	type UsageData,
-	renderApiUsageWidget,
-	renderStatusBar,
-	renderUsageWidget,
-} from "../tui/widget"
+import { type ProfileData, type UsageData, renderStatusBar, renderUsageWidget } from "../tui/widget"
 
 const MIN_WIDTH = 28
 const MAX_WIDTH = 60
@@ -22,8 +15,6 @@ function getTerminalWidth(): number {
 
 interface CliArgs {
 	once: boolean
-	apiOnly: boolean
-	oauthOnly: boolean
 	config?: string
 	help: boolean
 	version: boolean
@@ -32,8 +23,6 @@ interface CliArgs {
 function parseArgs(args: string[]): CliArgs {
 	const result: CliArgs = {
 		once: false,
-		apiOnly: false,
-		oauthOnly: false,
 		help: false,
 		version: false,
 	}
@@ -44,13 +33,6 @@ function parseArgs(args: string[]): CliArgs {
 			case "--once":
 			case "-1":
 				result.once = true
-				break
-			case "--api-only":
-				result.apiOnly = true
-				break
-			case "--oauth-only":
-			case "--rate-limits":
-				result.oauthOnly = true
 				break
 			case "--config":
 			case "-c": {
@@ -74,26 +56,21 @@ function parseArgs(args: string[]): CliArgs {
 
 function printHelp(): void {
 	console.log(`
-${text("usage-monitor", ANSI.bold)} - Monitor Claude usage and rate limits
+${text("usage-monitor", ANSI.bold)} - Monitor Claude rate limits
 
 ${text("USAGE:", ANSI.fg.yellow)}
   usage-monitor [OPTIONS]
 
 ${text("OPTIONS:", ANSI.fg.yellow)}
   -1, --once        Show usage once and exit (no auto-refresh)
-  --api-only        Only show Admin API usage (organizations only)
-  --oauth-only      Only show OAuth rate limits (personal accounts)
-  --rate-limits     Alias for --oauth-only
   -c, --config      Path to config file
   -h, --help        Show this help message
   -v, --version     Show version
 
-${text("DATA SOURCES:", ANSI.fg.yellow)}
-  OAuth (default)   Uses OpenCode (~/.local/share/opencode/auth.json)
-                    or Claude Code (~/.claude/.credentials.json) credentials
-                    Shows personal rate limits (5-hour, 7-day windows)
-  Admin API         Requires ANTHROPIC_ADMIN_API_KEY (organizations only)
-                    Shows cost and token usage
+${text("AUTHENTICATION:", ANSI.fg.yellow)}
+  Credentials are loaded automatically from:
+    1. OpenCode: ~/.local/share/opencode/auth.json
+    2. Claude Code: ~/.claude/.credentials.json
 
 ${text("CONFIGURATION:", ANSI.fg.yellow)}
   Config file locations (in order of priority):
@@ -102,13 +79,11 @@ ${text("CONFIGURATION:", ANSI.fg.yellow)}
     3. ./.usage-monitor.yaml
 
 ${text("ENVIRONMENT VARIABLES:", ANSI.fg.yellow)}
-  ANTHROPIC_ADMIN_API_KEY          Admin API key (organizations)
   USAGE_MONITOR_REFRESH_INTERVAL   Refresh interval in seconds
 
 ${text("EXAMPLES:", ANSI.fg.yellow)}
-  usage-monitor                    Show rate limits (OAuth)
+  usage-monitor                    Show rate limits (auto-refresh)
   usage-monitor --once             One-shot display
-  usage-monitor --api-only         Organization usage only
 `)
 }
 
@@ -165,30 +140,6 @@ function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string
 	)
 }
 
-function renderApiWidget(
-	usage: {
-		totalInputTokens: number
-		totalOutputTokens: number
-		totalCost: number
-		periodStart: Date
-		periodEnd: Date
-		lastUpdated: Date
-	} | null,
-	width: number,
-): string[] {
-	return renderApiUsageWidget(
-		{ title: "API Usage (This Month)", width, boxStyle: "rounded" },
-		usage
-			? {
-					totalInputTokens: usage.totalInputTokens,
-					totalOutputTokens: usage.totalOutputTokens,
-					totalCost: usage.totalCost,
-					lastUpdated: usage.lastUpdated,
-				}
-			: null,
-	)
-}
-
 function clearScreen(): void {
 	process.stdout.write("\x1B[2J\x1B[H")
 }
@@ -224,31 +175,24 @@ async function main(): Promise<void> {
 
 	const config = configResult.config
 
-	const showOAuth = !args.apiOnly && config.oauth.enabled
-	const showApi = !args.oauthOnly && config.anthropic.enabled && config.anthropic.adminApiKey
+	if (!config.oauth.enabled) {
+		console.log(text("OAuth is disabled in configuration.", ANSI.fg.yellow))
+		process.exit(0)
+	}
 
-	const oauthMonitor = showOAuth ? createOAuthMonitor(config) : null
-	const apiMonitor = showApi ? createMonitor(config) : null
+	const monitor = createOAuthMonitor(config)
 
 	if (args.once) {
-		const outputs: string[] = []
 		const width = getTerminalWidth()
+		await monitor.fetch()
+		const output = renderRateLimitsWidget(monitor.getState(), width).join("\n")
 
-		if (oauthMonitor) {
-			await oauthMonitor.fetch()
-			outputs.push(renderRateLimitsWidget(oauthMonitor.getState(), width).join("\n"))
-		}
-
-		if (apiMonitor) {
-			const usage = await apiMonitor.fetch()
-			outputs.push(renderApiWidget(usage, width).join("\n"))
-		}
-
-		if (outputs.length === 0) {
-			console.log(text("No data sources configured.", ANSI.fg.yellow))
-			console.log("Run 'opencode auth login' or install Claude Code to authenticate.")
+		if (monitor.getState().lastError) {
+			console.log(output)
+			console.log("")
+			console.log(text("Run 'opencode auth login' to authenticate.", ANSI.fg.yellow))
 		} else {
-			console.log(outputs.join("\n\n"))
+			console.log(output)
 		}
 		process.exit(0)
 	}
@@ -258,53 +202,26 @@ async function main(): Promise<void> {
 
 	const render = (): void => {
 		clearScreen()
-		const outputs: string[] = []
 		const width = getTerminalWidth()
+		const state = monitor.getState()
 
-		if (oauthMonitor) {
-			outputs.push(renderRateLimitsWidget(oauthMonitor.getState(), width).join("\n"))
-		}
-
-		if (apiMonitor) {
-			const state = apiMonitor.getState()
-			outputs.push(renderApiWidget(state.usage, width).join("\n"))
-		}
-
-		if (outputs.length === 0) {
-			console.log(text("No data sources configured.", ANSI.fg.yellow))
-		} else {
-			console.log(outputs.join("\n\n"))
-		}
-
-		const isRunning =
-			(oauthMonitor?.getState().isRunning ?? false) || (apiMonitor?.getState().isRunning ?? false)
-		const lastError = oauthMonitor?.getState().lastError || apiMonitor?.getState().lastError || null
-
+		console.log(renderRateLimitsWidget(state, width).join("\n"))
 		console.log("")
-		console.log(renderStatusBar(isRunning, lastError, config.display.refreshInterval, width))
+		console.log(
+			renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
+		)
 		console.log("")
 		console.log(text("Press Ctrl+C to exit", ANSI.dim))
 	}
 
-	if (oauthMonitor) {
-		oauthMonitor.on((event) => {
-			if (event.type === "update" || event.type === "error") {
-				render()
-			}
-		})
-	}
-
-	if (apiMonitor) {
-		apiMonitor.on((event) => {
-			if (event.type === "update" || event.type === "error") {
-				render()
-			}
-		})
-	}
+	monitor.on((event) => {
+		if (event.type === "update" || event.type === "error") {
+			render()
+		}
+	})
 
 	const cleanup = (): void => {
-		oauthMonitor?.stop()
-		apiMonitor?.stop()
+		monitor.stop()
 		showCursor()
 		clearScreen()
 		console.log("Goodbye!")
@@ -315,8 +232,7 @@ async function main(): Promise<void> {
 	process.on("SIGTERM", cleanup)
 	process.stdout.on("resize", render)
 
-	oauthMonitor?.start()
-	apiMonitor?.start()
+	monitor.start()
 	render()
 }
 

@@ -143,61 +143,6 @@ export function renderUsageWidget(
 	return lines
 }
 
-export interface ApiUsageData {
-	totalInputTokens: number
-	totalOutputTokens: number
-	totalCost: number
-	lastUpdated: Date
-}
-
-function formatTokens(tokens: number): string {
-	if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(2)}M`
-	if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`
-	return tokens.toString()
-}
-
-function formatCost(amount: number): string {
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency: "USD",
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	}).format(amount)
-}
-
-export function renderApiUsageWidget(config: WidgetConfig, usage: ApiUsageData | null): string[] {
-	const { title, width, boxStyle = "rounded" } = config
-	const lines: string[] = []
-
-	lines.push(boxTop(width, title, { boxStyle }))
-
-	if (!usage) {
-		lines.push(boxRow(text("No data available", ANSI.dim), width, { boxStyle }))
-		lines.push(boxRow("", width, { boxStyle }))
-		lines.push(boxRow("Configure ANTHROPIC_ADMIN_API_KEY", width, { boxStyle }))
-		lines.push(boxRow("to enable usage tracking.", width, { boxStyle }))
-	} else {
-		const inputStr = `Input:  ${text(formatTokens(usage.totalInputTokens), ANSI.fg.cyan)} tokens`
-		const outputStr = `Output: ${text(formatTokens(usage.totalOutputTokens), ANSI.fg.cyan)} tokens`
-		const costStr = `Cost:   ${text(formatCost(usage.totalCost), ANSI.fg.green)}`
-
-		lines.push(boxRow(inputStr, width, { boxStyle }))
-		lines.push(boxRow(outputStr, width, { boxStyle }))
-		lines.push(boxDivider(width, { boxStyle }))
-		lines.push(boxRow(costStr, width, { boxStyle }))
-		lines.push(boxDivider(width, { boxStyle }))
-		lines.push(
-			boxRow(text(`Updated: ${usage.lastUpdated.toLocaleTimeString()}`, ANSI.dim), width, {
-				boxStyle,
-			}),
-		)
-	}
-
-	lines.push(boxBottom(width, { boxStyle }))
-
-	return lines
-}
-
 export function renderStatusBar(
 	isRunning: boolean,
 	lastError: string | null,

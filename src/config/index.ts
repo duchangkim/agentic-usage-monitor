@@ -1,7 +1,6 @@
 export {
 	type Config,
 	type ResolvedConfig,
-	type AnthropicConfig,
 	type OAuthConfig,
 	type DisplayConfig,
 	type WidgetConfig,

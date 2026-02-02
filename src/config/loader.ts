@@ -124,11 +124,6 @@ function loadFromFile(path: string): { config: Config; warnings: string[] } | nu
 function loadFromEnv(): Config {
 	const config: Config = {}
 
-	const adminApiKey = process.env.ANTHROPIC_ADMIN_API_KEY
-	if (adminApiKey) {
-		config.anthropic = { adminApiKey, enabled: true }
-	}
-
 	const refreshInterval = process.env.USAGE_MONITOR_REFRESH_INTERVAL
 	if (refreshInterval) {
 		const interval = Number.parseInt(refreshInterval, 10)

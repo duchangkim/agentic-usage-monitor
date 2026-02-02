@@ -22,11 +22,9 @@ export {
 } from "./progress"
 export {
 	renderUsageWidget,
-	renderApiUsageWidget,
 	renderStatusBar,
 	type WidgetConfig,
 	type RateLimitData,
 	type ProfileData,
 	type UsageData,
-	type ApiUsageData,
 } from "./widget"
