@@ -2,8 +2,8 @@
 set -e
 
 SESSION_NAME="${USAGE_MONITOR_SESSION:-opencode}"
-HORIZONTAL_PANE_SIZE=25
-VERTICAL_PANE_SIZE=15
+HORIZONTAL_PANE_SIZE=20
+VERTICAL_PANE_LINES=1
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if command -v usage-monitor &> /dev/null; then
@@ -184,12 +184,12 @@ else
             tmux select-pane -t "$SESSION_NAME:0.0"
             ;;
         top)
-            tmux split-window -v -b -t "$SESSION_NAME" -l "${VERTICAL_PANE_SIZE}%" "$MONITOR_CMD"
+            tmux split-window -v -b -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
             tmux select-pane -t "$SESSION_NAME:0.0" -T "$MONITOR_PANE_NAME"
             tmux select-pane -t "$SESSION_NAME:0.1"
             ;;
         bottom)
-            tmux split-window -v -t "$SESSION_NAME" -l "${VERTICAL_PANE_SIZE}%" "$MONITOR_CMD"
+            tmux split-window -v -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
             tmux select-pane -t "$SESSION_NAME:0.1" -T "$MONITOR_PANE_NAME"
             tmux select-pane -t "$SESSION_NAME:0.0"
             ;;

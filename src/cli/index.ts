@@ -3,7 +3,13 @@ import { loadConfig } from "../config"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
 import { text } from "../tui/renderer"
 import { ANSI } from "../tui/styles"
-import { type ProfileData, type UsageData, renderStatusBar, renderUsageWidget } from "../tui/widget"
+import {
+	type ProfileData,
+	type UsageData,
+	renderCompactLine,
+	renderStatusBar,
+	renderUsageWidget,
+} from "../tui/widget"
 
 const MIN_WIDTH = 28
 const MAX_WIDTH = 60
@@ -15,6 +21,7 @@ function getTerminalWidth(): number {
 
 interface CliArgs {
 	once: boolean
+	compact: boolean
 	config?: string
 	help: boolean
 	version: boolean
@@ -23,6 +30,7 @@ interface CliArgs {
 function parseArgs(args: string[]): CliArgs {
 	const result: CliArgs = {
 		once: false,
+		compact: false,
 		help: false,
 		version: false,
 	}
@@ -33,6 +41,9 @@ function parseArgs(args: string[]): CliArgs {
 			case "--once":
 			case "-1":
 				result.once = true
+				break
+			case "--compact":
+				result.compact = true
 				break
 			case "--config":
 			case "-c": {
@@ -63,6 +74,7 @@ ${text("USAGE:", ANSI.fg.yellow)}
 
 ${text("OPTIONS:", ANSI.fg.yellow)}
   -1, --once        Show usage once and exit (no auto-refresh)
+  --compact         Minimal display mode (for small panes)
   -c, --config      Path to config file
   -h, --help        Show this help message
   -v, --version     Show version
@@ -84,6 +96,7 @@ ${text("ENVIRONMENT VARIABLES:", ANSI.fg.yellow)}
 ${text("EXAMPLES:", ANSI.fg.yellow)}
   usage-monitor                    Show rate limits (auto-refresh)
   usage-monitor --once             One-shot display
+  usage-monitor --compact          Minimal mode for small panes
 `)
 }
 
@@ -127,8 +140,12 @@ function stateToUsage(state: OAuthMonitorState): UsageData | null {
 	}
 }
 
-function renderRateLimitsWidget(state: OAuthMonitorState, width: number): string[] {
-	const compact = width < 40
+function renderRateLimitsWidget(
+	state: OAuthMonitorState,
+	width: number,
+	forceCompact: boolean,
+): string[] {
+	const compact = forceCompact || width < 40
 	const title = compact ? "Rate Limits" : "Claude Rate Limits"
 
 	return renderUsageWidget(
@@ -182,17 +199,22 @@ async function main(): Promise<void> {
 
 	const monitor = createOAuthMonitor(config)
 
+	const compactMode = args.compact || config.widget.compact
+
 	if (args.once) {
 		const width = getTerminalWidth()
 		await monitor.fetch()
-		const output = renderRateLimitsWidget(monitor.getState(), width).join("\n")
+		const state = monitor.getState()
 
-		if (monitor.getState().lastError) {
-			console.log(output)
-			console.log("")
-			console.log(text("Run 'opencode auth login' to authenticate.", ANSI.fg.yellow))
+		if (compactMode) {
+			console.log(renderCompactLine(stateToProfile(state), stateToUsage(state), state.lastError))
 		} else {
+			const output = renderRateLimitsWidget(state, width, false).join("\n")
 			console.log(output)
+			if (state.lastError) {
+				console.log("")
+				console.log(text("Run 'opencode auth login' to authenticate.", ANSI.fg.yellow))
+			}
 		}
 		process.exit(0)
 	}
@@ -205,13 +227,17 @@ async function main(): Promise<void> {
 		const width = getTerminalWidth()
 		const state = monitor.getState()
 
-		console.log(renderRateLimitsWidget(state, width).join("\n"))
-		console.log("")
-		console.log(
-			renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
-		)
-		console.log("")
-		console.log(text("Press Ctrl+C to exit", ANSI.dim))
+		if (compactMode) {
+			console.log(renderCompactLine(stateToProfile(state), stateToUsage(state), state.lastError))
+		} else {
+			console.log(renderRateLimitsWidget(state, width, false).join("\n"))
+			console.log("")
+			console.log(
+				renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
+			)
+			console.log("")
+			console.log(text("Press Ctrl+C to exit", ANSI.dim))
+		}
 	}
 
 	monitor.on((event) => {

@@ -85,8 +85,8 @@ opencode-with-monitor
 # Monitor position options
 opencode-with-monitor -l                 # monitor on left
 opencode-with-monitor -r                 # monitor on right (default)
-opencode-with-monitor -t                 # monitor on top
-opencode-with-monitor -b                 # monitor on bottom
+opencode-with-monitor -t                 # monitor on top (compact mode)
+opencode-with-monitor -b                 # monitor on bottom (compact mode)
 
 # Custom session name
 opencode-with-monitor -s myproject
@@ -109,8 +109,8 @@ with-monitor -- zsh
 # Position options
 with-monitor -l -- opencode           # monitor on left
 with-monitor -r -- opencode           # monitor on right (default)
-with-monitor -t -- opencode           # monitor on top
-with-monitor -b -- opencode           # monitor on bottom
+with-monitor -t -- opencode           # monitor on top (compact mode)
+with-monitor -b -- opencode           # monitor on bottom (compact mode)
 with-monitor -s myproject -- opencode # custom session name
 ```
 
@@ -193,7 +193,8 @@ display:
 
 widget:
   style: rounded
-  position: right  # left, right, top, or bottom
+  position: right   # left, right, top, or bottom
+  compact: false    # true for minimal single-line display
 ```
 
 ## Authentication

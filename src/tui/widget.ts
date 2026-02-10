@@ -163,3 +163,49 @@ export function renderStatusBar(
 
 	return `${status} | ${interval} | ${text(`Error: ${error}`, ANSI.fg.red)}`
 }
+
+function createMiniProgressBar(percentage: number, barWidth: number): string {
+	const filledCount = Math.round((percentage / 100) * barWidth)
+	const emptyCount = barWidth - filledCount
+	const color = colorByPercentage(percentage)
+	return text("━".repeat(filledCount), color) + text("░".repeat(emptyCount), ANSI.dim)
+}
+
+export function renderCompactLine(
+	profile: ProfileData | null,
+	usage: UsageData | null,
+	error: string | null,
+): string {
+	if (error) {
+		return text(`Error: ${error.slice(0, 40)}`, ANSI.fg.red)
+	}
+
+	if (!usage) {
+		return text("Loading...", ANSI.dim)
+	}
+
+	const parts: string[] = []
+
+	if (usage.fiveHour) {
+		const pct = Math.round(usage.fiveHour.utilization)
+		const bar = createMiniProgressBar(pct, 6)
+		parts.push(`5h:${bar}${String(pct).padStart(3)}%`)
+	}
+
+	if (usage.sevenDay) {
+		const pct = Math.round(usage.sevenDay.utilization)
+		const bar = createMiniProgressBar(pct, 6)
+		parts.push(`7d:${bar}${String(pct).padStart(3)}%`)
+	}
+
+	if (profile?.planBadge) {
+		const badgeColors = {
+			ENT: ANSI.fg.cyan,
+			MAX: ANSI.fg.magenta,
+			PRO: ANSI.fg.green,
+		} as const
+		parts.push(text(profile.planBadge, badgeColors[profile.planBadge]))
+	}
+
+	return parts.join(" │ ")
+}

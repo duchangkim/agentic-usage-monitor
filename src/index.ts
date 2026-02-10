@@ -4,7 +4,7 @@ import { loadConfig } from "./config"
 
 const MONITOR_PANE_TITLE = "usage-monitor"
 const HORIZONTAL_PANE_SIZE = 20
-const VERTICAL_PANE_SIZE = 2
+const VERTICAL_PANE_LINES = 1
 
 function isInTmux(): boolean {
 	return Boolean(process.env.TMUX)
@@ -37,7 +37,9 @@ function createMonitorPane(position: Position): {
 	position: Position
 } {
 	const splitArgs = buildTmuxSplitArgs(position)
-	const result = Bun.spawnSync(["tmux", "split-window", ...splitArgs, "usage-monitor"])
+	const isVertical = position === "top" || position === "bottom"
+	const monitorCmd = isVertical ? "usage-monitor --compact" : "usage-monitor"
+	const result = Bun.spawnSync(["tmux", "split-window", ...splitArgs, monitorCmd])
 
 	if (result.exitCode !== 0) {
 		return {
@@ -54,17 +56,15 @@ function createMonitorPane(position: Position): {
 }
 
 function buildTmuxSplitArgs(position: Position): string[] {
-	const isVertical = position === "top" || position === "bottom"
-	const size = `${isVertical ? VERTICAL_PANE_SIZE : HORIZONTAL_PANE_SIZE}%`
 	switch (position) {
 		case "left":
-			return ["-h", "-b", "-l", size]
+			return ["-h", "-b", "-l", `${HORIZONTAL_PANE_SIZE}%`]
 		case "right":
-			return ["-h", "-l", size]
+			return ["-h", "-l", `${HORIZONTAL_PANE_SIZE}%`]
 		case "top":
-			return ["-v", "-b", "-l", size]
+			return ["-v", "-b", "-l", `${VERTICAL_PANE_LINES}`]
 		case "bottom":
-			return ["-v", "-l", size]
+			return ["-v", "-l", `${VERTICAL_PANE_LINES}`]
 	}
 }
 
