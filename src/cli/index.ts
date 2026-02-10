@@ -6,7 +6,7 @@ import { ANSI } from "../tui/styles"
 import {
 	type ProfileData,
 	type UsageData,
-	renderCompactLine,
+	renderCompact3Lines,
 	renderStatusBar,
 	renderUsageWidget,
 } from "../tui/widget"
@@ -207,7 +207,10 @@ async function main(): Promise<void> {
 		const state = monitor.getState()
 
 		if (compactMode) {
-			console.log(renderCompactLine(stateToProfile(state), stateToUsage(state), state.lastError))
+			const lines = renderCompact3Lines(stateToProfile(state), stateToUsage(state), state.lastError)
+			for (const line of lines) {
+				console.log(line)
+			}
 		} else {
 			const output = renderRateLimitsWidget(state, width, false).join("\n")
 			console.log(output)
@@ -223,13 +226,16 @@ async function main(): Promise<void> {
 	clearScreen()
 
 	const render = (): void => {
-		clearScreen()
 		const width = getTerminalWidth()
 		const state = monitor.getState()
 
 		if (compactMode) {
-			console.log(renderCompactLine(stateToProfile(state), stateToUsage(state), state.lastError))
+			const lines = renderCompact3Lines(stateToProfile(state), stateToUsage(state), state.lastError)
+			process.stdout.write(
+				`\x1B[H${lines[0]}\x1B[K\n${lines[1]}\x1B[K\n${lines[2]}\x1B[K`,
+			)
 		} else {
+			clearScreen()
 			console.log(renderRateLimitsWidget(state, width, false).join("\n"))
 			console.log("")
 			console.log(

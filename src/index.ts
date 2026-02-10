@@ -4,7 +4,7 @@ import { loadConfig } from "./config"
 
 const MONITOR_PANE_TITLE = "usage-monitor"
 const HORIZONTAL_PANE_SIZE = 20
-const VERTICAL_PANE_LINES = 1
+const VERTICAL_PANE_LINES = 3
 
 function isInTmux(): boolean {
 	return Boolean(process.env.TMUX)
@@ -49,7 +49,24 @@ function createMonitorPane(position: Position): {
 		}
 	}
 
+	if (isVertical) {
+		Bun.spawnSync(["tmux", "resize-pane", "-y", `${VERTICAL_PANE_LINES}`])
+	}
+
 	Bun.spawnSync(["tmux", "select-pane", "-T", MONITOR_PANE_TITLE, "-t", "{last}"])
+
+	if (isVertical) {
+		const paneId = getMonitorPaneId()
+		if (paneId) {
+			Bun.spawnSync([
+				"tmux",
+				"set-hook",
+				"client-resized",
+				`resize-pane -t '${paneId}' -y ${VERTICAL_PANE_LINES}`,
+			])
+		}
+	}
+
 	focusMainPane(position)
 
 	return { success: true, message: "Monitor pane created", position }

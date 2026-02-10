@@ -171,41 +171,61 @@ function createMiniProgressBar(percentage: number, barWidth: number): string {
 	return text("━".repeat(filledCount), color) + text("░".repeat(emptyCount), ANSI.dim)
 }
 
-export function renderCompactLine(
+function renderCompactRateLine(
+	label: string,
+	data: RateLimitData | undefined,
+	maxWidth: number,
+): string {
+	if (!data) {
+		return text(`${label}: --`, ANSI.dim)
+	}
+
+	const pct = Math.round(data.utilization)
+	const pctStr = `${String(pct).padStart(3)}%`
+	const resetStr = formatTimeRemaining(data.resetsAt)
+	const resetPart = text(`(${resetStr})`, ANSI.dim)
+
+	const fixedWidth = label.length + 2 + 4 + 1 + resetStr.length + 2 + 1
+	const barWidth = Math.max(5, maxWidth - fixedWidth)
+
+	const bar = createMiniProgressBar(pct, barWidth)
+	return `${label}: ${bar} ${pctStr} ${resetPart}`
+}
+
+export function renderCompact3Lines(
 	profile: ProfileData | null,
 	usage: UsageData | null,
 	error: string | null,
-): string {
+	maxWidth?: number,
+): string[] {
+	const width = maxWidth ?? (process.stdout.columns || 80)
+
+	let line1: string
 	if (error) {
-		return text(`Error: ${error.slice(0, 40)}`, ANSI.fg.red)
+		line1 = text(`Error: ${error.slice(0, width - 8)}`, ANSI.fg.red)
+	} else if (profile) {
+		const badgePart = profile.planBadge
+			? (() => {
+					const badgeColors = {
+						ENT: ANSI.fg.cyan,
+						MAX: ANSI.fg.magenta,
+						PRO: ANSI.fg.green,
+					} as const
+					return ` ${text(profile.planBadge, badgeColors[profile.planBadge])}`
+				})()
+			: ""
+		const maxNameLen = width - (profile.planBadge ? profile.planBadge.length + 2 : 0)
+		const name =
+			profile.displayName.length > maxNameLen
+				? `${profile.displayName.slice(0, maxNameLen - 1)}…`
+				: profile.displayName
+		line1 = `${name}${badgePart}`
+	} else {
+		line1 = text("Loading...", ANSI.dim)
 	}
 
-	if (!usage) {
-		return text("Loading...", ANSI.dim)
-	}
+	const line2 = renderCompactRateLine("5h", usage?.fiveHour, width)
+	const line3 = renderCompactRateLine("7d", usage?.sevenDay, width)
 
-	const parts: string[] = []
-
-	if (usage.fiveHour) {
-		const pct = Math.round(usage.fiveHour.utilization)
-		const bar = createMiniProgressBar(pct, 6)
-		parts.push(`5h:${bar}${String(pct).padStart(3)}%`)
-	}
-
-	if (usage.sevenDay) {
-		const pct = Math.round(usage.sevenDay.utilization)
-		const bar = createMiniProgressBar(pct, 6)
-		parts.push(`7d:${bar}${String(pct).padStart(3)}%`)
-	}
-
-	if (profile?.planBadge) {
-		const badgeColors = {
-			ENT: ANSI.fg.cyan,
-			MAX: ANSI.fg.magenta,
-			PRO: ANSI.fg.green,
-		} as const
-		parts.push(text(profile.planBadge, badgeColors[profile.planBadge]))
-	}
-
-	return parts.join(" │ ")
+	return [line1, line2, line3]
 }

@@ -3,7 +3,7 @@ set -e
 
 SESSION_NAME="${USAGE_MONITOR_SESSION:-monitor-$$}"
 HORIZONTAL_PANE_SIZE=20
-VERTICAL_PANE_LINES=1
+VERTICAL_PANE_LINES=3
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if command -v usage-monitor &> /dev/null; then
@@ -123,8 +123,8 @@ MONITOR_PANE_NAME="monitor"
 # This ensures monitor terminates when the main command exits
 WRAPPED_CMD="$MAIN_CMD; tmux kill-session -t '$SESSION_NAME' 2>/dev/null || true"
 
-# Create main pane first
-tmux new-session -d -s "$SESSION_NAME" "bash -c '$WRAPPED_CMD'"
+# Create main pane first (use current terminal size to prevent pane redistribution on attach)
+tmux new-session -d -s "$SESSION_NAME" -x "$(tput cols)" -y "$(tput lines)" "bash -c '$WRAPPED_CMD'"
 tmux select-pane -t "$SESSION_NAME:0.0" -T "$MAIN_PANE_NAME"
 
 # Split based on position
@@ -145,11 +145,13 @@ case "$POSITION" in
         tmux split-window -v -b -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
         tmux select-pane -t "$SESSION_NAME:0.0" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.1"
+        tmux set-hook -t "$SESSION_NAME" client-resized "resize-pane -t '${SESSION_NAME}:0.0' -y ${VERTICAL_PANE_LINES}"
         ;;
     bottom)
         tmux split-window -v -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
         tmux select-pane -t "$SESSION_NAME:0.1" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.0"
+        tmux set-hook -t "$SESSION_NAME" client-resized "resize-pane -t '${SESSION_NAME}:0.1' -y ${VERTICAL_PANE_LINES}"
         ;;
 esac
 

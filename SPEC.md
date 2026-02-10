@@ -331,7 +331,7 @@ The following features from the current implementation will be **removed**:
 - [x] Add top/bottom position support
 - [x] Remove unused widget.width config (pane size is now fixed)
 - [x] Compact mode for top/bottom panes (1-line display)
-- [ ] 3-line compact mode (profile + 5h + 7d)
+- [x] 3-line compact mode (profile + 5h + 7d)
 - [ ] Add tmux status bar integration
 
 ### Phase 3: Polish (v1.2)

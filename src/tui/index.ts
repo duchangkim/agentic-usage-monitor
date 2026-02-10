@@ -23,7 +23,7 @@ export {
 export {
 	renderUsageWidget,
 	renderStatusBar,
-	renderCompactLine,
+	renderCompact3Lines,
 	type WidgetConfig,
 	type RateLimitData,
 	type ProfileData,
