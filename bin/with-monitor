@@ -145,13 +145,13 @@ case "$POSITION" in
         tmux split-window -v -b -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
         tmux select-pane -t "$SESSION_NAME:0.0" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.1"
-        tmux set-hook -t "$SESSION_NAME" client-resized "resize-pane -t '${SESSION_NAME}:0.0' -y ${VERTICAL_PANE_LINES}"
+        tmux set-hook -t "$SESSION_NAME" window-layout-changed "resize-pane -t '${SESSION_NAME}:0.0' -y ${VERTICAL_PANE_LINES}"
         ;;
     bottom)
         tmux split-window -v -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
         tmux select-pane -t "$SESSION_NAME:0.1" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.0"
-        tmux set-hook -t "$SESSION_NAME" client-resized "resize-pane -t '${SESSION_NAME}:0.1' -y ${VERTICAL_PANE_LINES}"
+        tmux set-hook -t "$SESSION_NAME" window-layout-changed "resize-pane -t '${SESSION_NAME}:0.1' -y ${VERTICAL_PANE_LINES}"
         ;;
 esac
 

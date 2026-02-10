@@ -61,7 +61,7 @@ function createMonitorPane(position: Position): {
 			Bun.spawnSync([
 				"tmux",
 				"set-hook",
-				"client-resized",
+				"window-layout-changed",
 				`resize-pane -t '${paneId}' -y ${VERTICAL_PANE_LINES}`,
 			])
 		}
