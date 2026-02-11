@@ -12,7 +12,7 @@ export interface OAuthCredentials {
 export interface CredentialsResult {
 	success: true
 	credentials: OAuthCredentials
-	source: "opencode" | "claude-code"
+	source: "claude-code" | "opencode"
 }
 
 export interface CredentialsError {
