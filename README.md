@@ -33,7 +33,6 @@ opencode-with-monitor
 - **Profile Info**: User, organization, and plan badges (Pro/Max/Enterprise)
 - **Auto-refresh**: Updates every 30 seconds
 - **tmux Integration**: Seamless side-by-side with OpenCode
-- **Plugin Toggle**: `/monitor toggle` to show/hide monitor pane from within OpenCode
 
 ## Installation
 
@@ -113,35 +112,6 @@ with-monitor -t -- opencode           # monitor on top (compact mode)
 with-monitor -b -- opencode           # monitor on bottom (compact mode)
 with-monitor -s myproject -- opencode # custom session name
 ```
-
-### Inside OpenCode (Plugin Commands)
-
-Once opencode is running inside tmux with the plugin:
-
-```
-/monitor toggle           # Show/hide the rate limit monitor pane
-/monitor status           # Check tmux/monitor status
-/monitor setup            # Show setup instructions
-/monitor help             # Show help
-```
-
-Or simply ask the agent: "show the rate limit monitor"
-
-### Enable Command Autocomplete (Optional)
-
-To show `/monitor` in OpenCode's command autocomplete:
-
-```bash
-# Per-project
-mkdir -p .opencode/commands
-cp node_modules/opencode-usage-monitor/commands/monitor.md .opencode/commands/
-
-# Or global
-mkdir -p ~/.config/opencode/commands
-cp node_modules/opencode-usage-monitor/commands/monitor.md ~/.config/opencode/commands/
-```
-
-Now `/monitor` will appear in autocomplete when you type `/`.
 
 ## tmux Basics
 

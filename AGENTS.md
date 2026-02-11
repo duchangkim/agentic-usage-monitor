@@ -15,13 +15,11 @@ Real-time Claude rate limit monitoring tool that runs alongside OpenCode using t
 - OAuth-based rate limit tracking (5-hour, 7-day windows)
 - Profile info display (user, organization, plan badges)
 - tmux integration for side-by-side display with OpenCode
-- OpenCode plugin for `/monitor` commands
 
 ## Tech Stack
 
 - **Runtime**: Bun
 - **Language**: TypeScript (strict mode)
-- **Framework**: @opencode-ai/plugin (for OpenCode integration)
 - **Package Manager**: Bun (bun.lock)
 - **Linter**: Biome
 
@@ -68,7 +66,6 @@ bun run cli --once
 ```
 agentic-usage-monitor/
 ├── src/
-│   ├── index.ts              # OpenCode plugin entry point
 │   ├── cli/
 │   │   └── index.ts          # Standalone CLI entry point
 │   ├── config/
@@ -147,52 +144,6 @@ docker compose run --rm e2e
 | `noLimits`      | No rate limits active         |
 | `slowResponse`  | 3 second delay                |
 | `serverError`   | 500 error response            |
-
-## OpenCode Plugin Testing
-
-This project is an OpenCode plugin. Test in `plugin-test/` directory which uses project-level config.
-
-### Setup & Test
-
-```bash
-# Install CLI globally (required for monitor pane)
-bun link
-
-# Start watch mode (auto-rebuilds on source changes)
-bun run dev:plugin
-
-# In another terminal, test in tmux
-tmux new-session -s dev
-cd plugin-test
-opencode
-
-# Inside OpenCode, ask agent to toggle monitor:
-# "show the rate limit monitor"
-# Or test directly:
-opencode run "/monitor toggle"
-opencode run "/monitor status"
-```
-
-### Plugin Commands
-
-| Command           | Description                           |
-| ----------------- | ------------------------------------- |
-| `/monitor toggle` | Show/hide the rate limit monitor pane |
-| `/monitor status` | Check tmux and monitor status         |
-| `/monitor setup`  | Show installation instructions        |
-| `/monitor help`   | Show usage help                       |
-
-### How It Works
-
-1. `bun run dev:plugin` builds to `plugin-test/.opencode/plugins/usage-monitor.js` with watch mode
-2. OpenCode auto-loads plugins from `.opencode/plugins/` directory (no config needed)
-3. `/monitor toggle` creates/removes a tmux pane running `usage-monitor` CLI
-4. `plugin-test/` is gitignored - isolated from development environment
-
-### Requirements
-
-- Must be running inside tmux session for toggle to work
-- `usage-monitor` CLI must be installed globally (`bun link` or `bun install -g`)
 
 ## Code Style Guidelines
 

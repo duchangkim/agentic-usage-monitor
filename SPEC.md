@@ -52,8 +52,7 @@ Developers using AI coding agents in the terminal face these challenges:
 
 ### Secondary Goals
 
-1. **OpenCode Integration**: First-class plugin support for OpenCode
-2. **Configurable Placement**: Top/bottom (1–3 lines, recommended default) and left/right (detail widget) positioning
+1. **Configurable Placement**: Top/bottom (1–3 lines, recommended default) and left/right (detail widget) positioning
 3. **Extensible Architecture**: Provider interface for future AI agent support
 4. **Easy Setup**: One-command installation and configuration
 
@@ -157,19 +156,7 @@ Developers using Anthropic's official Claude Code CLI.
 - Shows full widget with box drawing, profile info, progress bars, reset times
 - ~20% of terminal width
 
-### 6.4 OpenCode Plugin
-
-**Goal**: Users can control the monitor from within OpenCode using natural commands.
-
-**Required Capabilities**:
-
-- Toggle monitor visibility (show/hide)
-- Check current status
-- Get setup help
-
-**Design Principle**: Should work with both slash commands and natural language requests to the agent.
-
-### 6.5 Launcher Scripts
+### 6.4 Launcher Scripts
 
 **Goal**: One-command startup with monitor pre-configured.
 
@@ -184,7 +171,7 @@ Developers using Anthropic's official Claude Code CLI.
 - Configure position via command-line options (`-t/--top`, `-b/--bottom`, `-l/--left`, `-r/--right`)
 - Handle existing session conflicts gracefully
 
-### 6.6 Configuration
+### 6.5 Configuration
 
 **Goal**: Sensible defaults with customization options for power users.
 
@@ -225,14 +212,13 @@ Developers using Anthropic's official Claude Code CLI.
 │                    agentic-usage-monitor                     │
 ├────────────────────────────────────────────────────────────┤
 │                                                              │
-│  ┌──────────────────┐    ┌──────────────────────────────┐   │
-│  │  Launcher Scripts │    │   OpenCode Plugin            │   │
-│  │  (tmux session    │    │   (tmux pane control)        │   │
-│  │   management)     │    │                              │   │
-│  └────────┬─────────┘    └──────────────┬───────────────┘   │
-│           │                              │                   │
-│           └──────────┬───────────────────┘                   │
-│                      ▼                                       │
+│  ┌──────────────────┐                                      │
+│  │  Launcher Scripts │                                      │
+│  │  (tmux session    │                                      │
+│  │   management)     │                                      │
+│  └────────┬─────────┘                                      │
+│           │                                                 │
+│           ▼                                                 │
 │           ┌─────────────────┐    ┌────────────────────────┐  │
 │           │   CLI           │    │   Provider Interface   │  │
 │           │   (TUI render,  │───►│                        │  │
@@ -289,7 +275,6 @@ Launcher Script → tmux session → Monitor Pane → CLI Process
 | Category   | Package             | Purpose                    |
 | ---------- | ------------------- | -------------------------- |
 | Validation | zod                 | Config/response validation |
-| Plugin     | @opencode-ai/plugin | OpenCode integration       |
 | Dev        | typescript, biome   | Type checking, linting     |
 
 ### 8.3 Credential Sources
