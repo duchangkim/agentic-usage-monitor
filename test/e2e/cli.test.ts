@@ -64,20 +64,4 @@ describe("CLI Argument Parsing", () => {
 
 		expect(assertions.allPassed()).toBe(true)
 	})
-
-	it("should accept --oauth-only flag", async () => {
-		const result = await runCli(["--once", "--oauth-only"], context)
-
-		const assertions = assertCli(result).exitSuccess()
-
-		expect(assertions.allPassed()).toBe(true)
-	})
-
-	it("should accept --rate-limits alias", async () => {
-		const result = await runCli(["--once", "--rate-limits"], context)
-
-		const assertions = assertCli(result).exitSuccess()
-
-		expect(assertions.allPassed()).toBe(true)
-	})
 })

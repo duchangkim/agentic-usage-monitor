@@ -231,9 +231,7 @@ async function main(): Promise<void> {
 
 		if (compactMode) {
 			const lines = renderCompact3Lines(stateToProfile(state), stateToUsage(state), state.lastError)
-			process.stdout.write(
-				`\x1B[H${lines[0]}\x1B[K\n${lines[1]}\x1B[K\n${lines[2]}\x1B[K`,
-			)
+			process.stdout.write(`\x1B[H${lines[0]}\x1B[K\n${lines[1]}\x1B[K\n${lines[2]}\x1B[K`)
 		} else {
 			clearScreen()
 			console.log(renderRateLimitsWidget(state, width, false).join("\n"))

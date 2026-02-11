@@ -3,21 +3,16 @@
 	"version": "0.1.0",
 	"description": "Real-time Claude rate limit monitoring tool for AI coding agents",
 	"type": "module",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
 	"bin": {
 		"usage-monitor": "./dist/cli.js",
 		"opencode-with-monitor": "./bin/opencode-with-monitor",
 		"with-monitor": "./bin/with-monitor",
 		"usage-monitor-setup": "./bin/setup"
 	},
-	"files": ["dist", "bin", "commands"],
+	"files": ["dist", "bin"],
 	"scripts": {
-		"build": "bun build src/index.ts --outdir dist --target bun && bun build src/cli/index.ts --outfile dist/cli.js --target bun",
+		"build": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
 		"build:cli": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
-		"dev": "bun build src/index.ts --outdir dist --target bun --watch",
-		"dev:plugin": "mkdir -p plugin-test/.opencode/plugins && bun build src/index.ts --outfile plugin-test/.opencode/plugins/usage-monitor.js --target bun --watch",
-		"dev:install": "bun run build && bun run install:local",
 		"cli": "bun run src/cli/index.ts",
 		"cli:once": "bun run src/cli/index.ts --once",
 		"typecheck": "tsc --noEmit",
@@ -29,18 +24,9 @@
 		"test:e2e:docker": "docker compose run --rm e2e",
 		"test:e2e:report": "mkdir -p test-results && bun test test/e2e 2>&1 | tee test-results/output.txt && bun run test/harness/generate-report.ts",
 		"mock-server": "bun run test/mock-server/oauth-server.ts",
-		"install:local": "bun run build && mkdir -p ~/.config/opencode/plugins && cp dist/index.js ~/.config/opencode/plugins/usage-monitor.js",
 		"prepublishOnly": "bun run typecheck && bun run lint && bun run build"
 	},
-	"keywords": [
-		"opencode",
-		"opencode-plugin",
-		"claude",
-		"anthropic",
-		"rate-limits",
-		"usage",
-		"monitoring"
-	],
+	"keywords": ["opencode", "claude", "anthropic", "rate-limits", "usage", "monitoring"],
 	"author": "",
 	"license": "MIT",
 	"repository": {
@@ -52,11 +38,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0",
-		"@opencode-ai/plugin": "^1.1.39",
 		"@types/bun": "latest",
 		"typescript": "^5.7.0"
-	},
-	"peerDependencies": {
-		"@opencode-ai/plugin": ">=1.0.0"
 	}
 }

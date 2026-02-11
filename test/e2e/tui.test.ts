@@ -104,17 +104,17 @@ describe("TUI Rendering - Compact Mode", () => {
 		const assertions = assertCli(result).exitSuccess()
 		expect(assertions.allPassed()).toBe(true)
 
-		const lines = result.stdout.trim().split("\n").filter((l: string) => l.trim() !== "")
+		const lines = result.stdout
+			.trim()
+			.split("\n")
+			.filter((l: string) => l.trim() !== "")
 		expect(lines.length).toBe(3)
 	})
 
 	it("should display rate limit labels in compact mode", async () => {
 		const result = await runCli(["--once", "--compact"], context)
 
-		const assertions = assertCli(result)
-			.exitSuccess()
-			.stdoutContains("5h:")
-			.stdoutContains("7d:")
+		const assertions = assertCli(result).exitSuccess().stdoutContains("5h:").stdoutContains("7d:")
 
 		expect(assertions.allPassed()).toBe(true)
 	})

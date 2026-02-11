@@ -34,5 +34,3 @@ pnpm-lock.yaml
 # Cache
 .cache/
 *.tsbuildinfo
-
-plugin-test/.opencode/
