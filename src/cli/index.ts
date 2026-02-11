@@ -81,8 +81,8 @@ ${text("OPTIONS:", ANSI.fg.yellow)}
 
 ${text("AUTHENTICATION:", ANSI.fg.yellow)}
   Credentials are loaded automatically from:
-    1. OpenCode: ~/.local/share/opencode/auth.json
-    2. Claude Code: ~/.claude/.credentials.json
+    1. Claude Code: ~/.claude/.credentials.json
+    2. OpenCode: ~/.local/share/opencode/auth.json
 
 ${text("CONFIGURATION:", ANSI.fg.yellow)}
   Config file locations (in order of priority):
@@ -216,7 +216,7 @@ async function main(): Promise<void> {
 			console.log(output)
 			if (state.lastError) {
 				console.log("")
-				console.log(text("Run 'opencode auth login' to authenticate.", ANSI.fg.yellow))
+				console.log(text("Please authenticate via Claude Code or OpenCode.", ANSI.fg.yellow))
 			}
 		}
 		process.exit(0)

@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/user/agentic-usage-monitor/main/bin
 bun install -g agentic-usage-monitor
 
 # Start opencode with monitor
-opencode-with-monitor
+with-monitor -- opencode
 ```
 
 ## Features
@@ -75,29 +75,7 @@ bun install -g agentic-usage-monitor
 
 ## Usage
 
-### Start OpenCode with Monitor
-
-```bash
-# Default: monitor on right side
-opencode-with-monitor
-
-# Monitor position options
-opencode-with-monitor -l                 # monitor on left
-opencode-with-monitor -r                 # monitor on right (default)
-opencode-with-monitor -t                 # monitor on top (compact mode)
-opencode-with-monitor -b                 # monitor on bottom (compact mode)
-
-# Custom session name
-opencode-with-monitor -s myproject
-
-# Pass arguments to opencode
-opencode-with-monitor -- --model opus
-
-# Kill existing session and restart
-opencode-with-monitor -k
-```
-
-### Generic: Any Command with Monitor
+### Start with Monitor
 
 ```bash
 # Run any command with monitor
@@ -111,6 +89,12 @@ with-monitor -r -- opencode           # monitor on right (default)
 with-monitor -t -- opencode           # monitor on top (compact mode)
 with-monitor -b -- opencode           # monitor on bottom (compact mode)
 with-monitor -s myproject -- opencode # custom session name
+
+# Pass arguments to command
+with-monitor -- opencode --model opus
+
+# Kill existing session and restart
+with-monitor -k -- opencode
 ```
 
 ## tmux Basics
@@ -171,14 +155,10 @@ widget:
 
 The monitor automatically loads credentials from:
 
-1. **OpenCode** (primary): `~/.local/share/opencode/auth.json`
-2. **Claude Code** (fallback): `~/.claude/.credentials.json`
+1. **Claude Code** (primary): `~/.claude/.credentials.json`
+2. **OpenCode** (fallback): `~/.local/share/opencode/auth.json`
 
-To authenticate:
-
-```bash
-opencode auth login
-```
+No manual configuration needed. Credentials are detected automatically from Claude Code or OpenCode.
 
 ## Display
 
@@ -223,17 +203,16 @@ Either attach to it or kill and restart:
 
 ```bash
 # Attach to existing
-opencode-with-monitor -a
+with-monitor -a -- opencode
 
 # Or kill and restart
-opencode-with-monitor -k
+with-monitor -k -- opencode
 ```
 
 ### Monitor not showing data
 
-1. Check authentication: `opencode auth login`
-2. Verify credentials exist: `cat ~/.local/share/opencode/auth.json`
-3. Test manually: `usage-monitor --once`
+1. Verify credentials exist: `ls ~/.claude/.credentials.json` or `ls ~/.local/share/opencode/auth.json`
+2. Test manually: `usage-monitor --once`
 
 ## Development
 

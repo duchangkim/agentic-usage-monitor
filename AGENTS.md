@@ -85,7 +85,6 @@ agentic-usage-monitor/
 │       ├── progress.ts       # Progress bar component
 │       └── styles.ts         # ANSI styles
 ├── bin/
-│   ├── opencode-with-monitor # tmux launcher for OpenCode
 │   ├── with-monitor          # Generic tmux launcher
 │   └── setup                 # Auto-install script
 ├── test/
@@ -311,7 +310,7 @@ anthropic-beta: oauth-2025-04-20
 
 Credentials are auto-loaded from:
 
-1. **OpenCode**: `~/.local/share/opencode/auth.json`
-2. **Claude Code**: `~/.claude/.credentials.json`
+1. **Claude Code**: `~/.claude/.credentials.json`
+2. **OpenCode**: `~/.local/share/opencode/auth.json`
 
 No manual configuration needed for OAuth rate limits.

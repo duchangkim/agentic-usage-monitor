@@ -76,20 +76,6 @@ describe("tmux Integration", () => {
 	})
 })
 
-describe("bin/opencode-with-monitor", () => {
-	it("should exist and be executable", async () => {
-		const result = await $`test -x bin/opencode-with-monitor`.quiet().nothrow()
-		expect(result.exitCode).toBe(0)
-	})
-
-	it("should show help with --help", async () => {
-		const result = await $`./bin/opencode-with-monitor --help`.quiet().nothrow()
-
-		expect(result.exitCode).toBe(0)
-		expect(result.stdout.toString()).toContain("Usage:")
-	})
-})
-
 describe("bin/with-monitor", () => {
 	it("should exist and be executable", async () => {
 		const result = await $`test -x bin/with-monitor`.quiet().nothrow()
@@ -204,44 +190,6 @@ describe("Pane Naming and Coordinated Shutdown", () => {
 
 			expect(await sessionExists(sessionName)).toBe(true)
 			expect(await getPaneCount(sessionName)).toBe(1)
-		} finally {
-			await killSession(sessionName)
-		}
-	})
-
-	it("opencode-with-monitor should name panes correctly", async () => {
-		if (!tmuxAvailable) {
-			console.log("Skipping: tmux not available")
-			return
-		}
-
-		const opencodeCheck = await $`which opencode`.quiet().nothrow()
-		if (opencodeCheck.exitCode !== 0) {
-			console.log("Skipping: opencode not installed")
-			return
-		}
-
-		const sessionName = "test-opencode-panes-" + Date.now()
-
-		try {
-			const proc = Bun.spawn(["./bin/opencode-with-monitor", "-s", sessionName], {
-				stdout: "pipe",
-				stderr: "pipe",
-			})
-
-			await sleep(1000)
-
-			if (!(await sessionExists(sessionName))) {
-				proc.kill()
-				console.log("Skipping: session not created")
-				return
-			}
-
-			const paneNames = await getPaneNames(sessionName)
-			expect(paneNames).toContain("main")
-			expect(paneNames).toContain("monitor")
-
-			proc.kill()
 		} finally {
 			await killSession(sessionName)
 		}

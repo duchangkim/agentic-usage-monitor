@@ -162,8 +162,7 @@ Anthropic의 공식 Claude Code CLI를 사용하는 개발자.
 
 **스크립트**:
 
-- `with-monitor`: 모든 명령에 대한 범용 tmux 런처
-- `opencode-with-monitor`: OpenCode 전용 단축 스크립트
+- `with-monitor`: 모든 명령에 대한 범용 tmux 런처 (예: `with-monitor -- opencode`)
 
 **필수 기능**:
 
@@ -281,8 +280,8 @@ Anthropic의 공식 Claude Code CLI를 사용하는 개발자.
 
 OAuth 자격 증명 우선순위:
 
-1. **OpenCode**: `~/.local/share/opencode/auth.json`
-2. **Claude Code**: `~/.claude/.credentials.json`
+1. **Claude Code**: `~/.claude/.credentials.json`
+2. **OpenCode**: `~/.local/share/opencode/auth.json`
 3. **테스트**: `TEST_CREDENTIALS_PATH` 환경 변수
 
 ## 9. 제거된 기능

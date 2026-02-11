@@ -85,7 +85,10 @@ function loadFromOpenCode(): LoadCredentialsResult {
 		}
 
 		if (isTokenExpiredMs(expires)) {
-			return { success: false, error: "OpenCode OAuth token expired. Run 'opencode auth login'." }
+			return {
+				success: false,
+				error: "OAuth token expired. Please re-authenticate in Claude Code or OpenCode.",
+			}
 		}
 
 		return {
@@ -189,23 +192,23 @@ export function loadOAuthCredentials(): LoadCredentialsResult {
 		return loadFromTestCredentials()
 	}
 
-	const openCodeResult = loadFromOpenCode()
-	if (openCodeResult.success) return openCodeResult
-
 	const claudeCodeResult = loadFromClaudeCode()
 	if (claudeCodeResult.success) return claudeCodeResult
 
-	const openCodeNotFound = openCodeResult.error === "opencode-not-found"
-	const claudeCodeNotFound = claudeCodeResult.error === "claude-code-not-found"
+	const openCodeResult = loadFromOpenCode()
+	if (openCodeResult.success) return openCodeResult
 
-	if (openCodeNotFound && claudeCodeNotFound) {
+	const claudeCodeNotFound = claudeCodeResult.error === "claude-code-not-found"
+	const openCodeNotFound = openCodeResult.error === "opencode-not-found"
+
+	if (claudeCodeNotFound && openCodeNotFound) {
 		return {
 			success: false,
-			error: "No credentials found. Run 'opencode auth login' or install Claude Code.",
+			error: "No credentials found. Please authenticate via Claude Code or OpenCode.",
 		}
 	}
 
-	return openCodeNotFound ? claudeCodeResult : openCodeResult
+	return claudeCodeNotFound ? openCodeResult : claudeCodeResult
 }
 
 export function getTokenExpiryInfo(credentials: OAuthCredentials): {

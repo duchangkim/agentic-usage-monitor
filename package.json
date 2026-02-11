@@ -5,7 +5,6 @@
 	"type": "module",
 	"bin": {
 		"usage-monitor": "./dist/cli.js",
-		"opencode-with-monitor": "./bin/opencode-with-monitor",
 		"with-monitor": "./bin/with-monitor",
 		"usage-monitor-setup": "./bin/setup"
 	},

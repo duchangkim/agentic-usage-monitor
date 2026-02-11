@@ -162,8 +162,7 @@ Developers using Anthropic's official Claude Code CLI.
 
 **Scripts**:
 
-- `with-monitor`: Generic tmux launcher for any command
-- `opencode-with-monitor`: Shortcut for OpenCode specifically
+- `with-monitor`: Generic tmux launcher for any command (e.g., `with-monitor -- opencode`)
 
 **Required Capabilities**:
 
@@ -281,8 +280,8 @@ Launcher Script → tmux session → Monitor Pane → CLI Process
 
 Priority order for OAuth credentials:
 
-1. **OpenCode**: `~/.local/share/opencode/auth.json`
-2. **Claude Code**: `~/.claude/.credentials.json`
+1. **Claude Code**: `~/.claude/.credentials.json`
+2. **OpenCode**: `~/.local/share/opencode/auth.json`
 3. **Test**: `TEST_CREDENTIALS_PATH` environment variable
 
 ## 9. Removed Features
