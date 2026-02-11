@@ -7,6 +7,7 @@ export interface TestContext {
 	termWidth: number
 	termHeight: number
 	timeout: number
+	credentialsPath?: string
 }
 
 export interface TestResult {
@@ -41,7 +42,7 @@ export async function runCli(args: string[], context: TestContext): Promise<Test
 		...process.env,
 		COLUMNS: String(context.termWidth),
 		LINES: String(context.termHeight),
-		TEST_CREDENTIALS_PATH,
+		TEST_CREDENTIALS_PATH: context.credentialsPath ?? TEST_CREDENTIALS_PATH,
 		TERM: "xterm-256color",
 		NO_COLOR: "1",
 	}

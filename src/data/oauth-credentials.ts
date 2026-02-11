@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
@@ -32,12 +33,12 @@ interface OpenCodeAuthFile {
 	}
 }
 
-// Claude Code .credentials.json structure
-interface ClaudeCodeCredentialsFile {
+// Claude Code credentials structure (file or Keychain)
+interface ClaudeCodeCredentials {
 	claudeAiOauth?: {
 		accessToken?: string
 		refreshToken?: string
-		expiresAt?: string // ISO date string
+		expiresAt?: string | number // ISO date string or Unix timestamp in ms
 		scopes?: string[]
 	}
 }
@@ -48,19 +49,6 @@ function getOpenCodeAuthPath(): string {
 
 function getClaudeCodeCredentialsPath(): string {
 	return join(homedir(), ".claude", ".credentials.json")
-}
-
-function isTokenExpiredMs(expiresMs: number | undefined): boolean {
-	if (!expiresMs) return false
-	const bufferMs = 5 * 60 * 1000
-	return expiresMs - bufferMs < Date.now()
-}
-
-function isTokenExpiredIso(expiresAt: string | undefined): boolean {
-	if (!expiresAt) return false
-	const expiryDate = new Date(expiresAt)
-	const bufferMs = 5 * 60 * 1000
-	return expiryDate.getTime() - bufferMs < Date.now()
 }
 
 function loadFromOpenCode(): LoadCredentialsResult {
@@ -84,13 +72,6 @@ function loadFromOpenCode(): LoadCredentialsResult {
 			return { success: false, error: "Invalid OAuth token format in OpenCode." }
 		}
 
-		if (isTokenExpiredMs(expires)) {
-			return {
-				success: false,
-				error: "OAuth token expired. Please re-authenticate in Claude Code or OpenCode.",
-			}
-		}
-
 		return {
 			success: true,
 			credentials: {
@@ -109,42 +90,76 @@ function loadFromOpenCode(): LoadCredentialsResult {
 	}
 }
 
-function loadFromClaudeCode(): LoadCredentialsResult {
+function parseClaudeCodeCredentials(parsed: ClaudeCodeCredentials): LoadCredentialsResult {
+	if (!parsed.claudeAiOauth?.accessToken) {
+		return { success: false, error: "No OAuth credentials in Claude Code data." }
+	}
+
+	const { accessToken, refreshToken, expiresAt, scopes } = parsed.claudeAiOauth
+
+	if (!accessToken.startsWith("sk-ant-oat")) {
+		return { success: false, error: "Invalid OAuth token format in Claude Code." }
+	}
+
+	const expiresAtIso =
+		typeof expiresAt === "number"
+			? new Date(expiresAt).toISOString()
+			: typeof expiresAt === "string"
+				? expiresAt
+				: undefined
+
+	return {
+		success: true,
+		credentials: { accessToken, refreshToken, expiresAt: expiresAtIso, scopes },
+		source: "claude-code",
+	}
+}
+
+function loadFromClaudeCodeKeychain(): LoadCredentialsResult {
+	if (process.platform !== "darwin") {
+		return { success: false, error: "keychain-not-supported" }
+	}
+
+	try {
+		const output = execSync(
+			'security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null',
+			{ encoding: "utf-8", timeout: 5000 },
+		).trim()
+
+		const parsed: ClaudeCodeCredentials = JSON.parse(output)
+		return parseClaudeCodeCredentials(parsed)
+	} catch {
+		return { success: false, error: "claude-code-keychain-not-found" }
+	}
+}
+
+function loadFromClaudeCodeFile(): LoadCredentialsResult {
 	const credentialsPath = getClaudeCodeCredentialsPath()
 
 	if (!existsSync(credentialsPath)) {
-		return { success: false, error: "claude-code-not-found" }
+		return { success: false, error: "claude-code-file-not-found" }
 	}
 
 	try {
 		const content = readFileSync(credentialsPath, "utf-8")
-		const parsed: ClaudeCodeCredentialsFile = JSON.parse(content)
-
-		if (!parsed.claudeAiOauth?.accessToken) {
-			return { success: false, error: "No OAuth credentials in Claude Code file." }
-		}
-
-		const { accessToken, refreshToken, expiresAt, scopes } = parsed.claudeAiOauth
-
-		if (!accessToken.startsWith("sk-ant-oat")) {
-			return { success: false, error: "Invalid OAuth token format in Claude Code." }
-		}
-
-		if (isTokenExpiredIso(expiresAt)) {
-			return { success: false, error: "Claude Code OAuth token expired. Run 'claude'." }
-		}
-
-		return {
-			success: true,
-			credentials: { accessToken, refreshToken, expiresAt, scopes },
-			source: "claude-code",
-		}
+		const parsed: ClaudeCodeCredentials = JSON.parse(content)
+		return parseClaudeCodeCredentials(parsed)
 	} catch (error) {
 		return {
 			success: false,
 			error: `Failed to parse Claude Code credentials: ${error instanceof Error ? error.message : String(error)}`,
 		}
 	}
+}
+
+function loadFromClaudeCode(): LoadCredentialsResult {
+	const keychainResult = loadFromClaudeCodeKeychain()
+	if (keychainResult.success) return keychainResult
+
+	const fileResult = loadFromClaudeCodeFile()
+	if (fileResult.success) return fileResult
+
+	return { success: false, error: "claude-code-not-found" }
 }
 
 function loadFromTestCredentials(): LoadCredentialsResult {

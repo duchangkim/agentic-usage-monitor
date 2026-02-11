@@ -260,12 +260,14 @@ Anthropic의 공식 Claude Code CLI를 사용하는 개발자.
 
 ### 8.1 요구사항
 
-| 요구사항          | 명세                                 |
-| ----------------- | ------------------------------------ |
-| 터미널 멀티플렉서 | **tmux (핵심 의존성)**               |
-| 런타임            | Bun (Node.js 호환)                   |
-| OS                | macOS, Linux                         |
-| 인증              | OpenCode/Claude Code OAuth 자격 증명 |
+| 요구사항          | 명세                                     |
+| ----------------- | ---------------------------------------- |
+| 터미널 멀티플렉서 | **tmux (핵심 의존성)**                   |
+| 런타임            | Bun (Node.js 호환)                       |
+| OS                | macOS, Linux (**Windows 미지원**)        |
+| 인증              | OpenCode/Claude Code OAuth 자격 증명     |
+
+> **Windows**: Windows에서는 tmux를 네이티브로 사용할 수 없습니다. Windows 지원(WSL 또는 대체 터미널 멀티플렉서)은 향후 릴리스에서 계획되어 있습니다.
 
 ### 8.2 의존성
 
@@ -280,9 +282,10 @@ Anthropic의 공식 Claude Code CLI를 사용하는 개발자.
 
 OAuth 자격 증명 우선순위:
 
-1. **Claude Code**: `~/.claude/.credentials.json`
-2. **OpenCode**: `~/.local/share/opencode/auth.json`
-3. **테스트**: `TEST_CREDENTIALS_PATH` 환경 변수
+1. **Claude Code (macOS Keychain)**: `security find-generic-password -s "Claude Code-credentials"` — macOS 기본 소스
+2. **Claude Code (파일)**: `~/.claude/.credentials.json` — 폴백 / Linux
+3. **OpenCode**: `~/.local/share/opencode/auth.json`
+4. **테스트**: `TEST_CREDENTIALS_PATH` 환경 변수
 
 ## 9. 제거된 기능
 
@@ -334,6 +337,12 @@ OAuth 자격 증명 우선순위:
 
 - [ ] Pane 크기 기억 (세션 간 리사이즈된 크기 유지)
 - [ ] 마우스 리사이즈 후 자동 저장
+
+### Phase 6: 플랫폼 확장 (향후)
+
+- [ ] WSL을 통한 Windows 지원
+- [ ] Windows 네이티브 자격 증명 저장소 (Windows Credential Manager)
+- [ ] 크로스 플랫폼 자격 증명 로딩 (Linux keyring 지원)
 
 ## 11. 미결정 사항
 

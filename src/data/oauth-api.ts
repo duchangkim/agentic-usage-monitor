@@ -47,14 +47,35 @@ export type OAuthApiResult<T> =
 	| { success: true; data: T }
 	| { success: false; error: OAuthApiError }
 
-function createError(statusCode: number, message: string): OAuthApiError {
+function parseErrorMessage(responseBody: string): string {
+	try {
+		const parsed = JSON.parse(responseBody) as {
+			error?: { message?: string } | string
+			message?: string
+		}
+		if (typeof parsed.error === "object" && parsed.error?.message) {
+			return parsed.error.message
+		}
+		if (typeof parsed.error === "string") {
+			return parsed.error
+		}
+		if (parsed.message) {
+			return parsed.message
+		}
+	} catch {
+		// Not JSON, use as-is
+	}
+	return responseBody
+}
+
+function createError(statusCode: number, responseBody: string): OAuthApiError {
 	let type: OAuthApiError["type"] = "api_error"
 	if (statusCode === 401 || statusCode === 403) {
 		type = "authentication_error"
 	} else if (statusCode === 429) {
 		type = "rate_limit_error"
 	}
-	return { type, message, statusCode }
+	return { type, message: parseErrorMessage(responseBody), statusCode }
 }
 
 export class ClaudeOAuthApi {
@@ -87,25 +108,37 @@ export class ClaudeOAuthApi {
 		return { success: true, data: this.credentials }
 	}
 
-	private async request<T>(endpoint: string): Promise<OAuthApiResult<T>> {
+	private async request<T>(endpoint: string, isRetry = false): Promise<OAuthApiResult<T>> {
 		const credResult = await this.ensureCredentials()
 		if (!credResult.success) {
 			return credResult
 		}
 
+		const usedToken = credResult.data.accessToken
 		const url = `${OAUTH_API_BASE}${endpoint}`
 
 		try {
 			const response = await fetch(url, {
 				method: "GET",
 				headers: {
-					Authorization: `Bearer ${credResult.data.accessToken}`,
+					Authorization: `Bearer ${usedToken}`,
 					"anthropic-beta": ANTHROPIC_BETA_VERSION,
 					"Content-Type": "application/json",
 				},
 			})
 
 			if (!response.ok) {
+				if (response.status === 401 || response.status === 403) {
+					this.credentials = null
+
+					if (!isRetry) {
+						const refreshed = loadOAuthCredentials()
+						if (refreshed.success && refreshed.credentials.accessToken !== usedToken) {
+							this.credentials = refreshed.credentials
+							return this.request<T>(endpoint, true)
+						}
+					}
+				}
 				const errorText = await response.text()
 				return {
 					success: false,

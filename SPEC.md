@@ -264,8 +264,10 @@ Launcher Script → tmux session → Monitor Pane → CLI Process
 | -------------------- | -------------------------------------------- |
 | Terminal Multiplexer | **tmux (core dependency)**                   |
 | Runtime              | Bun (Node.js compatible)                     |
-| OS                   | macOS, Linux                                 |
+| OS                   | macOS, Linux (**Windows not supported**)     |
 | Authentication       | OpenCode/Claude Code OAuth credentials       |
+
+> **Windows**: tmux is not natively available on Windows. Windows support (e.g., via WSL or alternative terminal multiplexers) is planned for future releases.
 
 ### 8.2 Dependencies
 
@@ -280,9 +282,10 @@ Launcher Script → tmux session → Monitor Pane → CLI Process
 
 Priority order for OAuth credentials:
 
-1. **Claude Code**: `~/.claude/.credentials.json`
-2. **OpenCode**: `~/.local/share/opencode/auth.json`
-3. **Test**: `TEST_CREDENTIALS_PATH` environment variable
+1. **Claude Code (macOS Keychain)**: `security find-generic-password -s "Claude Code-credentials"` — primary source on macOS
+2. **Claude Code (file)**: `~/.claude/.credentials.json` — fallback / Linux
+3. **OpenCode**: `~/.local/share/opencode/auth.json`
+4. **Test**: `TEST_CREDENTIALS_PATH` environment variable
 
 ## 9. Removed Features
 
@@ -334,6 +337,12 @@ The following features from the current implementation will be **removed**:
 
 - [ ] Pane size persistence (remember resized pane across sessions)
 - [ ] Mouse resize support with auto-save
+
+### Phase 6: Platform Expansion (Future)
+
+- [ ] Windows support via WSL
+- [ ] Windows-native credential storage (Windows Credential Manager)
+- [ ] Cross-platform credential loading (Linux keyring support)
 
 ## 11. Open Questions
 

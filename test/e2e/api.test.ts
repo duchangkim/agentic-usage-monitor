@@ -1,4 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test"
+import { writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { assertCli } from "../harness/assertions"
 import { type TestContext, createTestContext, runCli } from "../harness/cli-runner"
 import { type MockServerHandle, startMockServer } from "../mock-server/oauth-server"
@@ -126,6 +129,38 @@ describe("API Request Verification", () => {
 			const hasAuth = requests.some((r) => r.headers.authorization?.startsWith("Bearer "))
 
 			expect(hasAuth).toBe(true)
+		} finally {
+			await server.stop()
+		}
+	})
+})
+
+describe("Expired Token Handling", () => {
+	it("should not block API calls when token expiresAt is in the past", async () => {
+		const expiredCredentials = {
+			access_token: "mock-access-token-for-testing",
+			refresh_token: "mock-refresh-token-for-testing",
+			expires_at: Date.now() - 3600 * 1000, // 1 hour ago
+		}
+		const tmpPath = join(tmpdir(), `expired-creds-${Date.now()}.json`)
+		writeFileSync(tmpPath, JSON.stringify(expiredCredentials))
+
+		const server = await startMockServer({ scenario: "healthy" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "healthy" })
+		ctx.credentialsPath = tmpPath
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			// Should still fetch and display usage data despite expired expiresAt
+			const assertions = assertCli(result).exitSuccess().stdoutContains("44%").stdoutContains("12%")
+			expect(assertions.allPassed()).toBe(true)
+
+			// Verify API calls were actually made (not blocked client-side)
+			const requests = server.getRequestLog()
+			const paths = requests.map((r) => r.path)
+			expect(paths).toContain("/api/oauth/usage")
+			expect(paths).toContain("/api/oauth/profile")
 		} finally {
 			await server.stop()
 		}
