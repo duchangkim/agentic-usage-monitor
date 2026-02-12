@@ -144,6 +144,28 @@ ensure_tmux() {
     fi
 }
 
+check_conflicts() {
+    # Find other usage-monitor binaries in PATH that shadow the installed one
+    INSTALLED="${INSTALL_DIR}/${BINARY_NAME}"
+    RESOLVED=$(command -v "$BINARY_NAME" 2>/dev/null || true)
+
+    if [ -n "$RESOLVED" ] && [ "$RESOLVED" != "$INSTALLED" ]; then
+        echo ""
+        warn "Another '${BINARY_NAME}' found at: ${RESOLVED}"
+        warn "It takes priority over the installed binary at: ${INSTALLED}"
+
+        # Check if it's a bun global package (JS script with #!/usr/bin/env bun)
+        if head -1 "$RESOLVED" 2>/dev/null | grep -q "bun"; then
+            warn "This appears to be a bun global package. Remove it with:"
+            echo ""
+            echo "  bun remove -g agentic-usage-monitor"
+        else
+            warn "Remove or rename it, or adjust your PATH so ${INSTALL_DIR} comes first."
+        fi
+        echo ""
+    fi
+}
+
 check_path() {
     case ":$PATH:" in
         *":${INSTALL_DIR}:"*) ;;
@@ -168,6 +190,7 @@ main() {
     get_latest_version
     download_binary
     install_binary
+    check_conflicts
     ensure_tmux
     check_path
 
