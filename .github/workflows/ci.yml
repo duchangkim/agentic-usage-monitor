@@ -64,4 +64,4 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq tmux
       - run: bun run build:binary
       - name: Binary E2E tests
-        run: bun test test/e2e-binary
+        run: bun test test/binary-e2e
