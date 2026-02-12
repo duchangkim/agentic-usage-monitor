@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import pkg from "../../package.json"
 import { loadConfig } from "../config"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
 import { text } from "../tui/renderer"
@@ -71,6 +72,11 @@ ${text("usage-monitor", ANSI.bold)} - Monitor Claude rate limits
 
 ${text("USAGE:", ANSI.fg.yellow)}
   usage-monitor [OPTIONS]
+  usage-monitor launch [OPTIONS] -- COMMAND
+
+${text("SUBCOMMANDS:", ANSI.fg.yellow)}
+  launch              Run a command with usage monitor in a tmux pane
+                      Use 'usage-monitor launch --help' for details
 
 ${text("OPTIONS:", ANSI.fg.yellow)}
   -1, --once        Show usage once and exit (no auto-refresh)
@@ -97,6 +103,7 @@ ${text("EXAMPLES:", ANSI.fg.yellow)}
   usage-monitor                    Show rate limits (auto-refresh)
   usage-monitor --once             One-shot display
   usage-monitor --compact          Minimal mode for small panes
+  usage-monitor launch -- opencode Run with monitor in tmux
 `)
 }
 
@@ -170,6 +177,12 @@ function showCursor(): void {
 }
 
 async function main(): Promise<void> {
+	if (process.argv[2] === "launch") {
+		const { runLaunch } = await import("./launch")
+		runLaunch(process.argv.slice(3))
+		process.exit(0)
+	}
+
 	const args = parseArgs(process.argv.slice(2))
 
 	if (args.help) {
@@ -178,7 +191,7 @@ async function main(): Promise<void> {
 	}
 
 	if (args.version) {
-		console.log("usage-monitor v0.1.0")
+		console.log(`usage-monitor v${pkg.version}`)
 		process.exit(0)
 	}
 
