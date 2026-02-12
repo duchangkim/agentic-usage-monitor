@@ -1,6 +1,6 @@
 {
 	"name": "agentic-usage-monitor",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Real-time Claude rate limit monitoring tool for AI coding agents",
 	"type": "module",
 	"bin": {
@@ -10,8 +10,8 @@
 	},
 	"files": ["dist", "bin"],
 	"scripts": {
-		"build": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
-		"build:cli": "bun build src/cli/index.ts --outfile dist/cli.js --target bun",
+		"build": "VERSION=$(node -p \"require('./package.json').version\") && bun build src/cli/index.ts --define \"__PKG_VERSION__=\\\"$VERSION\\\"\" --outfile dist/cli.js --target bun",
+		"build:cli": "VERSION=$(node -p \"require('./package.json').version\") && bun build src/cli/index.ts --define \"__PKG_VERSION__=\\\"$VERSION\\\"\" --outfile dist/cli.js --target bun",
 		"build:binary": "bun run scripts/build-binary.ts",
 		"build:binary:all": "bun run scripts/build-binary.ts --all",
 		"cli": "bun run src/cli/index.ts",

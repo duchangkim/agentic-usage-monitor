@@ -39,7 +39,8 @@ jobs:
       - name: Build binary
         run: |
           mkdir -p dist
-          bun build --compile --minify --target=${{ matrix.target }} --outfile dist/usage-monitor-${{ matrix.suffix }} src/cli/index.ts
+          VERSION=$(node -p "require('./package.json').version")
+          bun build --compile --minify --define "__PKG_VERSION__=\"$VERSION\"" --target=${{ matrix.target }} --outfile dist/usage-monitor-${{ matrix.suffix }} src/cli/index.ts
 
       - name: Smoke test
         if: matrix.can-smoke-test

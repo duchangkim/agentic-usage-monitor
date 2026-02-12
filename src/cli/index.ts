@@ -1,5 +1,12 @@
 #!/usr/bin/env bun
-import pkg from "../../package.json"
+declare const __PKG_VERSION__: string
+// In compiled binaries, __PKG_VERSION__ is injected via --define at build time.
+// In dev mode (bun run), fall back to npm_package_version set by the package manager.
+const VERSION =
+	typeof __PKG_VERSION__ !== "undefined"
+		? __PKG_VERSION__
+		: (process.env.npm_package_version ?? "dev")
+
 import { loadConfig } from "../config"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
 import { text } from "../tui/renderer"
@@ -191,7 +198,7 @@ async function main(): Promise<void> {
 	}
 
 	if (args.version) {
-		console.log(`usage-monitor v${pkg.version}`)
+		console.log(`usage-monitor v${VERSION}`)
 		process.exit(0)
 	}
 

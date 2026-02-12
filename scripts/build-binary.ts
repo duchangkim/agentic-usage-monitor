@@ -25,6 +25,7 @@ function buildBinary(target: string, outputName: string): void {
 		"bun build",
 		"--compile",
 		"--minify",
+		`--define '__PKG_VERSION__="${pkg.version}"'`,
 		`--target=${target}`,
 		`--outfile ${DIST}/${outputName}`,
 		ENTRY,
