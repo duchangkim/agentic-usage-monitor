@@ -16,13 +16,13 @@ interface LaunchArgs {
 }
 
 function getMonitorCmd(): string {
-	// When running as a compiled binary, process.execPath IS the binary
-	const isBunCompiled = !process.argv[1] || process.execPath === process.argv[1]
-	if (isBunCompiled) {
+	const scriptPath = process.argv[1]
+	// Compiled binary: argv[1] points to Bun's internal virtual filesystem (/$bunfs/root/...)
+	// Dev mode (bun run): argv[1] is the actual source file path (e.g., src/cli/index.ts)
+	if (!scriptPath || scriptPath.startsWith("/$bunfs/") || scriptPath === process.execPath) {
 		return process.execPath
 	}
-	// Dev mode: use bun to run the source file
-	return `bun run ${process.argv[1]}`
+	return `bun run ${scriptPath}`
 }
 
 function printUsage(): void {
@@ -150,7 +150,7 @@ function createMonitorWrapper(monitorCmd: string, sessionName: string, position:
 		position === "top" || position === "bottom" ? `${monitorCmd} --compact` : monitorCmd
 
 	const wrapperPath = join(tmpdir(), `usage-monitor-${process.pid}-${Date.now()}`)
-	const script = `#!/bin/bash
+	const script = `#!/usr/bin/env bash
 rm -f "${wrapperPath}"
 stty raw -echo 2>/dev/null
 ${fullMonitorCmd} </dev/null &
@@ -216,7 +216,7 @@ export function runLaunch(args: string[]): void {
 
 	// Create main pane first
 	tmux(
-		`new-session -d -s ${JSON.stringify(sessionName)} -x ${cols} -y ${rows} "bash -c '${wrappedCmd.replace(/'/g, "'\\''")}'"`,
+		`new-session -d -s ${JSON.stringify(sessionName)} -x ${cols} -y ${rows} "sh -c '${wrappedCmd.replace(/'/g, "'\\''")}'"`,
 	)
 	tmux(`select-pane -t ${JSON.stringify(sessionName)}:0.0 -T ${JSON.stringify(mainPaneName)}`)
 	tmux(`set-option -t ${JSON.stringify(sessionName)} mouse on`)
