@@ -1,6 +1,6 @@
 {
 	"name": "agentic-usage-monitor",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"description": "Real-time Claude rate limit monitoring tool for AI coding agents",
 	"type": "module",
 	"bin": {
@@ -32,7 +32,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/user/agentic-usage-monitor"
+		"url": "https://github.com/duchangkim/agentic-usage-monitor"
 	},
 	"dependencies": {
 		"zod": "^3.24.0"
