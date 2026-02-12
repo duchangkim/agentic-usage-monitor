@@ -35,6 +35,12 @@ bun run typecheck
 # Build
 bun run build
 
+# Build standalone binary (current platform)
+bun run build:binary
+
+# Build standalone binaries (all platforms)
+bun run build:binary:all
+
 # Lint
 bun run lint
 bun run lint:fix
@@ -67,7 +73,8 @@ bun run cli --once
 agentic-usage-monitor/
 ├── src/
 │   ├── cli/
-│   │   └── index.ts          # Standalone CLI entry point
+│   │   ├── index.ts          # Standalone CLI entry point
+│   │   └── launch.ts         # tmux launcher (TS port of bin/with-monitor)
 │   ├── config/
 │   │   ├── index.ts          # Config exports
 │   │   ├── loader.ts         # YAML config loader
@@ -85,7 +92,7 @@ agentic-usage-monitor/
 │       ├── progress.ts       # Progress bar component
 │       └── styles.ts         # ANSI styles
 ├── bin/
-│   ├── with-monitor          # Generic tmux launcher
+│   ├── with-monitor          # Generic tmux launcher (deprecated)
 │   └── setup                 # Auto-install script
 ├── test/
 │   ├── e2e/                  # E2E test scenarios
@@ -93,8 +100,13 @@ agentic-usage-monitor/
 │   ├── harness/              # Test utilities
 │   └── mock-server/          # Mock OAuth API server
 ├── scripts/
+│   ├── build-binary.ts       # Standalone binary build script
 │   ├── verify.sh             # Static analysis verification
 │   └── e2e.sh                # E2E test runner script
+├── .github/workflows/
+│   ├── ci.yml                # CI pipeline (typecheck, lint, build, test)
+│   └── release.yml           # Release automation (binary builds)
+├── install.sh                # One-line installer script
 ├── SPEC.md                   # Technical specification (English)
 ├── SPEC.ko.md                # Technical specification (Korean)
 └── AGENTS.md                 # This file

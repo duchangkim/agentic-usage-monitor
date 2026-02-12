@@ -287,7 +287,68 @@ Priority order for OAuth credentials:
 3. **OpenCode**: `~/.local/share/opencode/auth.json`
 4. **Test**: `TEST_CREDENTIALS_PATH` environment variable
 
-## 9. Removed Features
+## 9. Distribution
+
+### 9.1 Standalone Binary
+
+The project supports standalone binary distribution via `bun build --compile`, eliminating the need for a Bun runtime installation.
+
+**Build targets**:
+
+| Platform       | Binary Name                 |
+| -------------- | --------------------------- |
+| macOS ARM64    | `usage-monitor-darwin-arm64` |
+| macOS x64      | `usage-monitor-darwin-x64`   |
+| Linux x64      | `usage-monitor-linux-x64`    |
+| Linux ARM64    | `usage-monitor-linux-arm64`  |
+
+**Build commands**:
+
+```bash
+bun run build:binary        # Current platform
+bun run build:binary:all    # All platforms
+```
+
+### 9.2 Installation
+
+**One-line install** (downloads from GitHub Releases):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/duchangkim/agentic-usage-monitor/main/install.sh | sh
+```
+
+The installer:
+- Detects OS and architecture automatically
+- Downloads the appropriate binary to `~/.local/bin/`
+- Verifies SHA256 checksums
+- Installs tmux if missing (with user's package manager)
+- Removes macOS Gatekeeper quarantine attribute
+
+**Custom install directory**:
+
+```bash
+INSTALL_DIR=/usr/local/bin curl -fsSL ... | sh
+```
+
+### 9.3 Launch Subcommand
+
+The `usage-monitor launch` subcommand replaces the deprecated `bin/with-monitor` bash script:
+
+```bash
+usage-monitor launch -- opencode           # Monitor on right (default)
+usage-monitor launch -t -- opencode        # Monitor on top
+usage-monitor launch -b -- opencode        # Monitor on bottom
+usage-monitor launch -s myproject -- nvim  # Named session
+```
+
+This is built into the standalone binary, so no separate script installation is needed.
+
+### 9.4 CI/CD
+
+- **CI**: Runs on push to main and PRs — typecheck, lint, build, E2E tests, binary smoke test
+- **Release**: Triggered by `v*` tags — builds binaries for all platforms, generates checksums, creates GitHub Release
+
+## 10. Removed Features
 
 The following features from the current implementation will be **removed**:
 
@@ -304,7 +365,7 @@ The following features from the current implementation will be **removed**:
 
 **Migration**: Users needing org billing can use Anthropic Console or other tools.
 
-## 10. Implementation Phases
+## 11. Implementation Phases
 
 ### Phase 1: Core Cleanup (Current → v1.0) ✅
 
@@ -344,7 +405,7 @@ The following features from the current implementation will be **removed**:
 - [ ] Windows-native credential storage (Windows Credential Manager)
 - [ ] Cross-platform credential loading (Linux keyring support)
 
-## 11. Open Questions
+## 12. Open Questions
 
 | Question                        | Status | Notes                                |
 | ------------------------------- | ------ | ------------------------------------ |
@@ -353,7 +414,7 @@ The following features from the current implementation will be **removed**:
 | Notification mechanism          | TBD    | Terminal bell? Desktop notification? |
 | Usage history/trends            | TBD    | Store locally? How much?             |
 
-## 12. References
+## 13. References
 
 - [AGENTS.md](./AGENTS.md) - AI agent instructions
 - [Claude-Usage-Tracker](https://github.com/hamed-elfayome/Claude-Usage-Tracker) - Reference macOS app

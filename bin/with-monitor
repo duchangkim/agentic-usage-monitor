@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+echo "Note: 'with-monitor' is deprecated. Use 'usage-monitor launch' instead." >&2
 set -e
 
 SESSION_NAME="${USAGE_MONITOR_SESSION:-monitor-$$}"

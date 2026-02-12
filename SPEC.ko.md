@@ -287,7 +287,68 @@ OAuth 자격 증명 우선순위:
 3. **OpenCode**: `~/.local/share/opencode/auth.json`
 4. **테스트**: `TEST_CREDENTIALS_PATH` 환경 변수
 
-## 9. 제거된 기능
+## 9. 배포
+
+### 9.1 독립 실행 바이너리
+
+`bun build --compile`을 통한 독립 실행 바이너리 배포를 지원하며, Bun 런타임 설치가 필요 없습니다.
+
+**빌드 타겟**:
+
+| 플랫폼         | 바이너리 이름                 |
+| -------------- | ----------------------------- |
+| macOS ARM64    | `usage-monitor-darwin-arm64`  |
+| macOS x64      | `usage-monitor-darwin-x64`    |
+| Linux x64      | `usage-monitor-linux-x64`     |
+| Linux ARM64    | `usage-monitor-linux-arm64`   |
+
+**빌드 명령어**:
+
+```bash
+bun run build:binary        # 현재 플랫폼
+bun run build:binary:all    # 전체 플랫폼
+```
+
+### 9.2 설치
+
+**원라인 설치** (GitHub Releases에서 다운로드):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/duchangkim/agentic-usage-monitor/main/install.sh | sh
+```
+
+설치 스크립트 기능:
+- OS와 아키텍처 자동 감지
+- 적절한 바이너리를 `~/.local/bin/`에 다운로드
+- SHA256 체크섬 검증
+- tmux 미설치 시 자동 설치 시도 (패키지 매니저 활용)
+- macOS Gatekeeper quarantine 속성 자동 제거
+
+**커스텀 설치 디렉토리**:
+
+```bash
+INSTALL_DIR=/usr/local/bin curl -fsSL ... | sh
+```
+
+### 9.3 Launch 서브커맨드
+
+`usage-monitor launch` 서브커맨드는 더 이상 사용되지 않는 `bin/with-monitor` bash 스크립트를 대체합니다:
+
+```bash
+usage-monitor launch -- opencode           # 모니터 오른쪽 (기본값)
+usage-monitor launch -t -- opencode        # 모니터 상단
+usage-monitor launch -b -- opencode        # 모니터 하단
+usage-monitor launch -s myproject -- nvim  # 이름 지정 세션
+```
+
+독립 실행 바이너리에 내장되어 있으므로 별도의 스크립트 설치가 필요 없습니다.
+
+### 9.4 CI/CD
+
+- **CI**: main 브랜치 push 및 PR 시 실행 — 타입 체크, 린트, 빌드, E2E 테스트, 바이너리 스모크 테스트
+- **릴리스**: `v*` 태그 push 시 실행 — 전체 플랫폼 바이너리 빌드, 체크섬 생성, GitHub Release 생성
+
+## 10. 제거된 기능
 
 현재 구현에서 다음 기능들이 **제거**됩니다:
 
@@ -304,7 +365,7 @@ OAuth 자격 증명 우선순위:
 
 **마이그레이션**: 조직 빌링이 필요한 사용자는 Anthropic Console이나 다른 도구 사용.
 
-## 10. 구현 단계
+## 11. 구현 단계
 
 ### Phase 1: 코어 정리 (현재 → v1.0) ✅
 
@@ -344,7 +405,7 @@ OAuth 자격 증명 우선순위:
 - [ ] Windows 네이티브 자격 증명 저장소 (Windows Credential Manager)
 - [ ] 크로스 플랫폼 자격 증명 로딩 (Linux keyring 지원)
 
-## 11. 미결정 사항
+## 12. 미결정 사항
 
 | 질문                         | 상태 | 참고                        |
 | ---------------------------- | ---- | --------------------------- |
@@ -353,7 +414,7 @@ OAuth 자격 증명 우선순위:
 | 알림 메커니즘                | TBD  | 터미널 벨? 데스크톱 알림?   |
 | 사용량 히스토리/추이         | TBD  | 로컬 저장? 얼마나?          |
 
-## 12. 참고 문서
+## 13. 참고 문서
 
 - [AGENTS.md](./AGENTS.md) - AI 에이전트 지침
 - [Claude-Usage-Tracker](https://github.com/hamed-elfayome/Claude-Usage-Tracker) - 참고 macOS 앱
