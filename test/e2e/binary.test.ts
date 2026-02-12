@@ -134,8 +134,7 @@ describe("Compiled Binary tmux Launch", () => {
 			...process.env,
 			COLUMNS: "120",
 			LINES: "24",
-			TEST_CREDENTIALS_PATH:
-				import.meta.dir + "/../fixtures/credentials.json",
+			TEST_CREDENTIALS_PATH: import.meta.dir + "/../fixtures/credentials.json",
 			OAUTH_API_BASE: mockServer.url + "/api/oauth",
 			TERM: "xterm-256color",
 		}
@@ -164,10 +163,8 @@ describe("Compiled Binary tmux Launch", () => {
 			expect(paneCount).toBe(2)
 
 			// Capture monitor pane output (pane 0 for bottom position = monitor is pane 1)
-			const pane0Output =
-				await $`tmux capture-pane -t ${sessionName}:0.0 -p`.quiet().nothrow()
-			const pane1Output =
-				await $`tmux capture-pane -t ${sessionName}:0.1 -p`.quiet().nothrow()
+			const pane0Output = await $`tmux capture-pane -t ${sessionName}:0.0 -p`.quiet().nothrow()
+			const pane1Output = await $`tmux capture-pane -t ${sessionName}:0.1 -p`.quiet().nothrow()
 
 			const allOutput = pane0Output.stdout.toString() + pane1Output.stdout.toString()
 			const allOutputLower = allOutput.toLowerCase()
@@ -178,8 +175,9 @@ describe("Compiled Binary tmux Launch", () => {
 			expect(allOutput).not.toContain("bun run")
 
 			// Verify pane names
-			const paneNames =
-				await $`tmux list-panes -t ${sessionName} -F "#{pane_title}"`.quiet().nothrow()
+			const paneNames = await $`tmux list-panes -t ${sessionName} -F "#{pane_title}"`
+				.quiet()
+				.nothrow()
 			const names = paneNames.stdout.toString().trim().split("\n")
 			expect(names).toContain("main")
 			expect(names).toContain("monitor")
@@ -201,8 +199,7 @@ describe("Compiled Binary tmux Launch", () => {
 			...process.env,
 			COLUMNS: "120",
 			LINES: "24",
-			TEST_CREDENTIALS_PATH:
-				import.meta.dir + "/../fixtures/credentials.json",
+			TEST_CREDENTIALS_PATH: import.meta.dir + "/../fixtures/credentials.json",
 			OAUTH_API_BASE: mockServer.url + "/api/oauth",
 			TERM: "xterm-256color",
 		}
@@ -224,8 +221,7 @@ describe("Compiled Binary tmux Launch", () => {
 			}
 
 			// Monitor pane is pane 1 for right position
-			const monitorOutput =
-				await $`tmux capture-pane -t ${sessionName}:0.1 -p`.quiet().nothrow()
+			const monitorOutput = await $`tmux capture-pane -t ${sessionName}:0.1 -p`.quiet().nothrow()
 			const output = monitorOutput.stdout.toString()
 
 			// Should contain rate limit indicators (from healthy scenario)
