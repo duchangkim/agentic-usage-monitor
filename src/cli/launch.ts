@@ -221,6 +221,14 @@ export function runLaunch(args: string[]): void {
 	tmux(`select-pane -t ${JSON.stringify(sessionName)}:0.0 -T ${JSON.stringify(mainPaneName)}`)
 	tmux(`set-option -t ${JSON.stringify(sessionName)} mouse on`)
 
+	// Extended keys support - pass Shift+Enter and other modifier key combinations to inner programs
+	// Requires tmux 3.2+; silently ignored on older versions via the tmux() helper
+	tmux(`set-option -t ${JSON.stringify(sessionName)} extended-keys on`)
+
+	// Allow terminal passthrough sequences (DCS, OSC) to reach the outer terminal
+	// Requires tmux 3.3+; needed for some TUI features in claude code / opencode
+	tmux(`set-option -t ${JSON.stringify(sessionName)} allow-passthrough on`)
+
 	// Status bar with exit hint
 	tmux(`set-option -t ${JSON.stringify(sessionName)} status on`)
 	tmux(`set-option -t ${JSON.stringify(sessionName)} status-style "bg=default,fg=colour245"`)

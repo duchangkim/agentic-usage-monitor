@@ -129,6 +129,14 @@ tmux new-session -d -s "$SESSION_NAME" -x "$(tput cols)" -y "$(tput lines)" "bas
 tmux select-pane -t "$SESSION_NAME:0.0" -T "$MAIN_PANE_NAME"
 tmux set-option -t "$SESSION_NAME" mouse on
 
+# Extended keys support - pass Shift+Enter and other modifier key combinations to inner programs
+# Requires tmux 3.2+
+tmux set-option -t "$SESSION_NAME" extended-keys on 2>/dev/null || true
+
+# Allow terminal passthrough sequences (DCS, OSC) to reach the outer terminal
+# Requires tmux 3.3+
+tmux set-option -t "$SESSION_NAME" allow-passthrough on 2>/dev/null || true
+
 # Status bar with exit hint
 tmux set-option -t "$SESSION_NAME" status on
 tmux set-option -t "$SESSION_NAME" status-style "bg=default,fg=colour245"
