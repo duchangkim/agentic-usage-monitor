@@ -114,6 +114,39 @@ agentic-usage-monitor/
 
 ## Testing Strategy
 
+### Test-First Rule
+
+**Every feature or behavior change MUST include corresponding tests in the same commit.**
+
+- Feature implementation and its tests are a single logical unit of work
+- A feature without tests is not considered complete
+- Tests must verify the newly added behavior, not just that existing tests still pass
+
+| Change Type | Required Test |
+| --- | --- |
+| New tmux option/config | E2E test verifying the option is set (`tmux show-options`) |
+| New CLI flag/argument | E2E test in `cli.test.ts` checking output or behavior |
+| New API handling logic | E2E test in `api.test.ts` with mock server scenario |
+| TUI rendering change | E2E test in `tui.test.ts` verifying rendered output |
+| Bug fix | Test that reproduces the bug and verifies the fix |
+
+**Environment-dependent tests** should gracefully skip when prerequisites are unavailable (e.g., tmux not installed) rather than failing:
+
+```typescript
+// GOOD: Skip gracefully when environment doesn't support the test
+if (!tmuxAvailable) {
+  console.log("Skipping: tmux not available")
+  return
+}
+
+// GOOD: Skip when specific feature is not supported
+const result = await $`tmux show-options -t ${session} extended-keys`.quiet().nothrow()
+if (result.exitCode !== 0) {
+  console.log("Skipping: extended-keys option not supported (tmux < 3.2)")
+  return
+}
+```
+
 ### Test Pyramid
 
 1. **E2E Tests (Primary)**: Run actual CLI with mock OAuth server
@@ -233,6 +266,7 @@ Test-only variables:
 
 Before considering a task complete:
 
+- [ ] New/changed behavior has corresponding test(s) in the same commit
 - [ ] `bun run typecheck` passes
 - [ ] `bun run lint` passes
 - [ ] `bun run test:e2e` passes
