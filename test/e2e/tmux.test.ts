@@ -162,6 +162,68 @@ describe("Pane Naming and Coordinated Shutdown", () => {
 		}
 	})
 
+	it("should set extended-keys on for modifier key passthrough", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const sessionName = "test-extkeys-" + Date.now()
+
+		try {
+			await $`./bin/with-monitor -s ${sessionName} -- sleep 5`.quiet().nothrow()
+			await sleep(500)
+
+			if (!(await sessionExists(sessionName))) {
+				console.log("Skipping: session not created (likely missing dependencies)")
+				return
+			}
+
+			const result = await $`tmux show-options -t ${sessionName} extended-keys`.quiet().nothrow()
+			if (result.exitCode !== 0) {
+				console.log("Skipping: extended-keys option not supported (tmux < 3.2)")
+				return
+			}
+
+			const output = result.stdout.toString().trim()
+			expect(output).toContain("on")
+		} finally {
+			await killSession(sessionName)
+		}
+	})
+
+	it("should set allow-passthrough on for terminal escape sequences", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const sessionName = "test-passthrough-" + Date.now()
+
+		try {
+			await $`./bin/with-monitor -s ${sessionName} -- sleep 5`.quiet().nothrow()
+			await sleep(500)
+
+			if (!(await sessionExists(sessionName))) {
+				console.log("Skipping: session not created (likely missing dependencies)")
+				return
+			}
+
+			const result = await $`tmux show-options -t ${sessionName} allow-passthrough`
+				.quiet()
+				.nothrow()
+			if (result.exitCode !== 0) {
+				console.log("Skipping: allow-passthrough option not supported (tmux < 3.3)")
+				return
+			}
+
+			const output = result.stdout.toString().trim()
+			expect(output).toContain("on")
+		} finally {
+			await killSession(sessionName)
+		}
+	})
+
 	it("should keep main running when monitor pane is killed", async () => {
 		if (!tmuxAvailable) {
 			console.log("Skipping: tmux not available")
