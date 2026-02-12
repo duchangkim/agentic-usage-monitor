@@ -240,7 +240,7 @@ async function main(): Promise<void> {
 				renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
 			)
 			console.log("")
-			console.log(text("Press Ctrl+C to exit", ANSI.dim))
+			console.log(text("Press q to exit", ANSI.dim))
 		}
 	}
 

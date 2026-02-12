@@ -126,33 +126,73 @@ WRAPPED_CMD="$MAIN_CMD; tmux kill-session -t '$SESSION_NAME' 2>/dev/null || true
 # Create main pane first (use current terminal size to prevent pane redistribution on attach)
 tmux new-session -d -s "$SESSION_NAME" -x "$(tput cols)" -y "$(tput lines)" "bash -c '$WRAPPED_CMD'"
 tmux select-pane -t "$SESSION_NAME:0.0" -T "$MAIN_PANE_NAME"
+tmux set-option -t "$SESSION_NAME" mouse on
+
+# Status bar with exit hint
+tmux set-option -t "$SESSION_NAME" status on
+tmux set-option -t "$SESSION_NAME" status-style "bg=default,fg=colour245"
+tmux set-option -t "$SESSION_NAME" status-left "#[fg=colour75,bold] ${SESSION_NAME} #[default]"
+tmux set-option -t "$SESSION_NAME" status-left-length 30
+tmux set-option -t "$SESSION_NAME" status-right "#[fg=colour245]Monitor: press q to exit #[default]"
+tmux set-option -t "$SESSION_NAME" status-right-length 40
+
+# Determine full monitor command based on position
+case "$POSITION" in
+    top|bottom) FULL_MONITOR_CMD="$MONITOR_CMD --compact" ;;
+    *)          FULL_MONITOR_CMD="$MONITOR_CMD" ;;
+esac
+
+# Create wrapper script for monitor pane:
+# - Disables echo so keyboard input is not displayed
+# - Runs monitor with stdin from /dev/null (display-only)
+# - Reads keyboard input: 'q'/'Q' kills the tmux session
+MONITOR_WRAPPER="$(mktemp /tmp/usage-monitor.XXXXXX)"
+cat > "$MONITOR_WRAPPER" <<ENDWRAPPER
+#!/bin/bash
+rm -f "${MONITOR_WRAPPER}"
+stty raw -echo 2>/dev/null
+${FULL_MONITOR_CMD} </dev/null &
+MPID=\$!
+trap 'kill \$MPID 2>/dev/null' EXIT
+while IFS= read -r -n1 key 2>/dev/null; do
+    case "\$key" in
+        q|Q) tmux kill-session -t "${SESSION_NAME}" 2>/dev/null; exit 0;;
+    esac
+done
+wait \$MPID 2>/dev/null
+ENDWRAPPER
+chmod +x "$MONITOR_WRAPPER"
 
 # Split based on position
 # -h = horizontal split (left/right), -v = vertical split (top/bottom)
 # -b = put new pane before (left of / above)
 case "$POSITION" in
     left)
-        tmux split-window -h -b -t "$SESSION_NAME" -l "${HORIZONTAL_PANE_SIZE}%" "$MONITOR_CMD"
+        tmux split-window -h -b -t "$SESSION_NAME" -l "${HORIZONTAL_PANE_SIZE}%" "bash '$MONITOR_WRAPPER'"
         tmux select-pane -t "$SESSION_NAME:0.0" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.1"
         ;;
     right)
-        tmux split-window -h -t "$SESSION_NAME" -l "${HORIZONTAL_PANE_SIZE}%" "$MONITOR_CMD"
+        tmux split-window -h -t "$SESSION_NAME" -l "${HORIZONTAL_PANE_SIZE}%" "bash '$MONITOR_WRAPPER'"
         tmux select-pane -t "$SESSION_NAME:0.1" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.0"
         ;;
     top)
-        tmux split-window -v -b -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
+        tmux split-window -v -b -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "bash '$MONITOR_WRAPPER'"
         tmux select-pane -t "$SESSION_NAME:0.0" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.1"
         tmux set-hook -t "$SESSION_NAME" window-layout-changed "resize-pane -t '${SESSION_NAME}:0.0' -y ${VERTICAL_PANE_LINES}"
         ;;
     bottom)
-        tmux split-window -v -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "$MONITOR_CMD --compact"
+        tmux split-window -v -t "$SESSION_NAME" -l "${VERTICAL_PANE_LINES}" "bash '$MONITOR_WRAPPER'"
         tmux select-pane -t "$SESSION_NAME:0.1" -T "$MONITOR_PANE_NAME"
         tmux select-pane -t "$SESSION_NAME:0.0"
         tmux set-hook -t "$SESSION_NAME" window-layout-changed "resize-pane -t '${SESSION_NAME}:0.1' -y ${VERTICAL_PANE_LINES}"
         ;;
 esac
+
+# Prevent mouse scroll in monitor pane (cancel copy mode immediately)
+tmux set-hook -t "$SESSION_NAME" pane-mode-changed \
+    "if -F '#{==:#{pane_title},monitor}' 'send-keys -X cancel'"
 
 exec tmux attach-session -t "$SESSION_NAME"
