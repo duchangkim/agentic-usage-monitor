@@ -192,6 +192,41 @@ describe("Pane Naming and Coordinated Shutdown", () => {
 		}
 	})
 
+	it("should bind Shift+Enter to send Escape+Enter for Claude Code compatibility", async () => {
+		if (!tmuxAvailable) {
+			console.log("Skipping: tmux not available")
+			return
+		}
+
+		const sessionName = "test-shift-enter-" + Date.now()
+
+		try {
+			await $`./bin/with-monitor -s ${sessionName} -- sleep 5`.quiet().nothrow()
+			await sleep(500)
+
+			if (!(await sessionExists(sessionName))) {
+				console.log("Skipping: session not created (likely missing dependencies)")
+				return
+			}
+
+			// Verify S-Enter binding exists in tmux key table
+			const result = await $`tmux list-keys`.quiet().nothrow()
+			if (result.exitCode !== 0) {
+				console.log("Skipping: could not list tmux keys")
+				return
+			}
+
+			const output = result.stdout.toString()
+			const sEnterBinding = output.split("\n").find((line) => line.includes("S-Enter"))
+			expect(sEnterBinding).toBeDefined()
+			expect(sEnterBinding).toContain("send-keys")
+		} finally {
+			// Clean up binding since it's global
+			await $`tmux unbind-key -n S-Enter`.quiet().nothrow()
+			await killSession(sessionName)
+		}
+	})
+
 	it("should set allow-passthrough on for terminal escape sequences", async () => {
 		if (!tmuxAvailable) {
 			console.log("Skipping: tmux not available")

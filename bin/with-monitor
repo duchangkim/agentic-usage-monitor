@@ -129,9 +129,12 @@ tmux new-session -d -s "$SESSION_NAME" -x "$(tput cols)" -y "$(tput lines)" "bas
 tmux select-pane -t "$SESSION_NAME:0.0" -T "$MAIN_PANE_NAME"
 tmux set-option -t "$SESSION_NAME" mouse on
 
-# Extended keys support - pass Shift+Enter and other modifier key combinations to inner programs
+# Extended keys support - enables tmux to recognize modifier key combinations (e.g. S-Enter)
 # Requires tmux 3.2+
 tmux set-option -t "$SESSION_NAME" extended-keys on 2>/dev/null || true
+
+# Bind Shift+Enter to send ESC+CR — Claude Code expects this sequence for newline input
+tmux bind-key -n S-Enter send-keys Escape Enter 2>/dev/null || true
 
 # Allow terminal passthrough sequences (DCS, OSC) to reach the outer terminal
 # Requires tmux 3.3+

@@ -221,9 +221,13 @@ export function runLaunch(args: string[]): void {
 	tmux(`select-pane -t ${JSON.stringify(sessionName)}:0.0 -T ${JSON.stringify(mainPaneName)}`)
 	tmux(`set-option -t ${JSON.stringify(sessionName)} mouse on`)
 
-	// Extended keys support - pass Shift+Enter and other modifier key combinations to inner programs
+	// Extended keys support - enables tmux to recognize modifier key combinations (e.g. S-Enter)
 	// Requires tmux 3.2+; silently ignored on older versions via the tmux() helper
 	tmux(`set-option -t ${JSON.stringify(sessionName)} extended-keys on`)
+
+	// Bind Shift+Enter to send ESC+CR — Claude Code expects this sequence for newline input
+	// tmux recognizes S-Enter via extended-keys; the binding intercepts it before forwarding
+	tmux(`bind-key -n S-Enter send-keys Escape Enter`)
 
 	// Allow terminal passthrough sequences (DCS, OSC) to reach the outer terminal
 	// Requires tmux 3.3+; needed for some TUI features in claude code / opencode
