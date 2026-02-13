@@ -8,6 +8,8 @@ const VERSION =
 		: (process.env.npm_package_version ?? "dev")
 
 import { loadConfig } from "../config"
+import { getAgent, getAgentNames, loadAgentConfig, resolveAgentConfig } from "../config/agents"
+import { type CredentialSource, VALID_CREDENTIAL_SOURCES } from "../data/oauth-credentials"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
 import { text } from "../tui/renderer"
 import { ANSI } from "../tui/styles"
@@ -31,6 +33,7 @@ interface CliArgs {
 	once: boolean
 	compact: boolean
 	config?: string
+	source?: CredentialSource
 	help: boolean
 	version: boolean
 }
@@ -59,6 +62,12 @@ function parseArgs(args: string[]): CliArgs {
 				if (nextArg) result.config = nextArg
 				break
 			}
+			case "--source":
+			case "-s": {
+				const nextArg = args[++i]
+				if (nextArg) result.source = nextArg as CredentialSource
+				break
+			}
 			case "--help":
 			case "-h":
 				result.help = true
@@ -70,6 +79,11 @@ function parseArgs(args: string[]): CliArgs {
 		}
 	}
 
+	// Environment variable fallback for source
+	if (!result.source && process.env.USAGE_MONITOR_SOURCE) {
+		result.source = process.env.USAGE_MONITOR_SOURCE as CredentialSource
+	}
+
 	return result
 }
 
@@ -79,7 +93,13 @@ ${text("usage-monitor", ANSI.bold)} - Monitor Claude rate limits
 
 ${text("USAGE:", ANSI.fg.yellow)}
   usage-monitor [OPTIONS]
+  usage-monitor <agent>               Run agent with usage monitor in tmux
   usage-monitor launch [OPTIONS] -- COMMAND
+
+${text("AGENTS:", ANSI.fg.yellow)}
+  claude              Launch Claude Code with claude-code credentials
+  opencode            Launch OpenCode with opencode credentials
+  (Custom agents can be defined in ~/.config/usage-monitor/agents.json)
 
 ${text("SUBCOMMANDS:", ANSI.fg.yellow)}
   launch              Run a command with usage monitor in a tmux pane
@@ -88,14 +108,17 @@ ${text("SUBCOMMANDS:", ANSI.fg.yellow)}
 ${text("OPTIONS:", ANSI.fg.yellow)}
   -1, --once        Show usage once and exit (no auto-refresh)
   --compact         Minimal display mode (for small panes)
+  -s, --source      Credential source: auto, claude-code, opencode
+                    (default: auto — tries all sources)
   -c, --config      Path to config file
   -h, --help        Show this help message
   -v, --version     Show version
 
 ${text("AUTHENTICATION:", ANSI.fg.yellow)}
-  Credentials are loaded automatically from:
-    1. Claude Code: ~/.claude/.credentials.json
-    2. OpenCode: ~/.local/share/opencode/auth.json
+  Credentials are loaded automatically from (in priority order):
+    1. Claude Code (macOS Keychain / ~/.claude/.credentials.json)
+    2. OpenCode (~/.local/share/opencode/auth.json)
+  Use --source to select a specific credential source.
 
 ${text("CONFIGURATION:", ANSI.fg.yellow)}
   Config file locations (in order of priority):
@@ -151,6 +174,12 @@ function stateToUsage(state: OAuthMonitorState): UsageData | null {
 					resetsAt: state.rateLimits.sevenDay.resetsAt,
 				}
 			: undefined,
+		sevenDayOpus: state.rateLimits.sevenDayOpus
+			? {
+					utilization: state.rateLimits.sevenDayOpus.utilization,
+					resetsAt: state.rateLimits.sevenDayOpus.resetsAt,
+				}
+			: undefined,
 	}
 }
 
@@ -183,11 +212,50 @@ function showCursor(): void {
 	process.stdout.write("\x1B[?25h")
 }
 
+function loadAgents() {
+	const fileResult = loadAgentConfig()
+	const customConfig = fileResult.success ? fileResult.config : undefined
+	return resolveAgentConfig(customConfig)
+}
+
 async function main(): Promise<void> {
 	if (process.argv[2] === "launch") {
 		const { runLaunch } = await import("./launch")
 		runLaunch(process.argv.slice(3))
 		process.exit(0)
+	}
+
+	// Check if first argument is an agent name
+	const firstArg = process.argv[2]
+	if (firstArg && !firstArg.startsWith("-")) {
+		const agents = loadAgents()
+		const agent = getAgent(agents, firstArg)
+
+		if (agent) {
+			// Agent subcommand: delegate to launch with agent's command and credential source
+			const { runLaunch } = await import("./launch")
+			const agentArgs = process.argv.slice(3) // remaining args after agent name
+			const launchArgs = [
+				"--source",
+				agent.credential.source,
+				...agentArgs,
+				"--",
+				...agent.command.split(" "),
+			]
+			runLaunch(launchArgs)
+			process.exit(0)
+		}
+
+		// If it's not a known subcommand/flag, show error with available agents
+		if (firstArg !== "launch") {
+			const agentNames = getAgentNames(agents)
+			console.error(text(`Unknown agent: "${firstArg}"`, ANSI.fg.red))
+			console.error("")
+			console.error(`Available agents: ${agentNames.join(", ")}`)
+			console.error("")
+			console.error("Run 'usage-monitor --help' for more information.")
+			process.exit(1)
+		}
 	}
 
 	const args = parseArgs(process.argv.slice(2))
@@ -200,6 +268,17 @@ async function main(): Promise<void> {
 	if (args.version) {
 		console.log(`usage-monitor v${VERSION}`)
 		process.exit(0)
+	}
+
+	// Validate --source flag
+	if (args.source && !VALID_CREDENTIAL_SOURCES.includes(args.source)) {
+		console.error(
+			text(
+				`Invalid source: "${args.source}". Valid sources: ${VALID_CREDENTIAL_SOURCES.join(", ")}`,
+				ANSI.fg.red,
+			),
+		)
+		process.exit(1)
 	}
 
 	const configResult = loadConfig(args.config)
@@ -217,7 +296,7 @@ async function main(): Promise<void> {
 		process.exit(0)
 	}
 
-	const monitor = createOAuthMonitor(config)
+	const monitor = createOAuthMonitor(config, args.source)
 
 	const compactMode = args.compact || config.widget.compact
 

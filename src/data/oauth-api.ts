@@ -1,4 +1,8 @@
-import { type OAuthCredentials, loadOAuthCredentials } from "./oauth-credentials"
+import {
+	type CredentialSource,
+	type OAuthCredentials,
+	loadOAuthCredentials,
+} from "./oauth-credentials"
 
 const OAUTH_API_BASE = process.env.OAUTH_API_BASE ?? "https://api.anthropic.com/api/oauth"
 const ANTHROPIC_BETA_VERSION = "oauth-2025-04-20"
@@ -80,11 +84,13 @@ function createError(statusCode: number, responseBody: string): OAuthApiError {
 
 export class ClaudeOAuthApi {
 	private credentials: OAuthCredentials | null = null
+	private credentialSource: CredentialSource | undefined
 
-	constructor(credentials?: OAuthCredentials) {
+	constructor(credentials?: OAuthCredentials, credentialSource?: CredentialSource) {
 		if (credentials) {
 			this.credentials = credentials
 		}
+		this.credentialSource = credentialSource
 	}
 
 	private async ensureCredentials(): Promise<OAuthApiResult<OAuthCredentials>> {
@@ -92,7 +98,7 @@ export class ClaudeOAuthApi {
 			return { success: true, data: this.credentials }
 		}
 
-		const result = loadOAuthCredentials()
+		const result = loadOAuthCredentials(this.credentialSource)
 		if (!result.success) {
 			return {
 				success: false,
@@ -132,7 +138,7 @@ export class ClaudeOAuthApi {
 					this.credentials = null
 
 					if (!isRetry) {
-						const refreshed = loadOAuthCredentials()
+						const refreshed = loadOAuthCredentials(this.credentialSource)
 						if (refreshed.success && refreshed.credentials.accessToken !== usedToken) {
 							this.credentials = refreshed.credentials
 							return this.request<T>(endpoint, true)
@@ -277,6 +283,9 @@ function transformProfileResponse(raw: RawProfileResponse): ProfileData {
 	}
 }
 
-export function createOAuthApi(credentials?: OAuthCredentials): ClaudeOAuthApi {
-	return new ClaudeOAuthApi(credentials)
+export function createOAuthApi(
+	credentials?: OAuthCredentials,
+	credentialSource?: CredentialSource,
+): ClaudeOAuthApi {
+	return new ClaudeOAuthApi(credentials, credentialSource)
 }

@@ -23,6 +23,7 @@ export interface ProfileData {
 export interface UsageData {
 	fiveHour?: RateLimitData | undefined
 	sevenDay?: RateLimitData | undefined
+	sevenDayOpus?: RateLimitData | undefined
 }
 
 function createProgressBar(percentage: number, barWidth: number): string {
@@ -113,6 +114,7 @@ export function renderUsageWidget(
 	} else {
 		const label5h = compact ? "5h: " : "5-Hour: "
 		const label7d = compact ? "7d: " : "7-Day:  "
+		const labelOpus = compact ? "Op: " : "Opus:   "
 
 		if (usage.fiveHour) {
 			lines.push(
@@ -123,6 +125,14 @@ export function renderUsageWidget(
 		if (usage.sevenDay) {
 			lines.push(
 				boxRow(renderRateLimitRow(label7d, usage.sevenDay, width, compact), width, { boxStyle }),
+			)
+		}
+
+		if (usage.sevenDayOpus) {
+			lines.push(
+				boxRow(renderRateLimitRow(labelOpus, usage.sevenDayOpus, width, compact), width, {
+					boxStyle,
+				}),
 			)
 		}
 

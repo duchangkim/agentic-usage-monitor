@@ -150,6 +150,51 @@ describe("TUI Rendering - Different Scenarios", () => {
 		}
 	})
 
+	it("should display Opus 7-day usage when data is available", async () => {
+		const server = await startMockServer({ scenario: "enterpriseOrg" })
+		const ctx = await createTestContext({
+			mockServer: server,
+			scenario: "enterpriseOrg",
+			termWidth: 60,
+		})
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			// enterpriseOrg scenario has seven_day_opus at 8%
+			const assertions = assertCli(result)
+				.exitSuccess()
+				.stdoutContains("8%")
+				.stdoutMatches(/Opus|Op:/)
+
+			expect(assertions.allPassed()).toBe(true)
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should not display Opus row when data is null", async () => {
+		const server = await startMockServer({ scenario: "healthy" })
+		const ctx = await createTestContext({
+			mockServer: server,
+			scenario: "healthy",
+			termWidth: 60,
+		})
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			// healthy scenario has no opus data
+			const assertions = assertCli(result).exitSuccess()
+			expect(assertions.allPassed()).toBe(true)
+
+			// Should NOT contain Opus label
+			expect(result.stdout).not.toMatch(/Opus|opus/i)
+		} finally {
+			await server.stop()
+		}
+	})
+
 	it("should render PRO badge for pro users", async () => {
 		const server = await startMockServer({ scenario: "lowUsage" })
 		const ctx = await createTestContext({ mockServer: server, scenario: "lowUsage" })

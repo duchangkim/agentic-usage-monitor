@@ -10,6 +10,10 @@ export interface OAuthCredentials {
 	scopes: string[] | undefined
 }
 
+export type CredentialSource = "auto" | "claude-code" | "opencode"
+
+export const VALID_CREDENTIAL_SOURCES: CredentialSource[] = ["auto", "claude-code", "opencode"]
+
 export interface CredentialsResult {
 	success: true
 	credentials: OAuthCredentials
@@ -202,11 +206,32 @@ function loadFromTestCredentials(): LoadCredentialsResult {
 	}
 }
 
-export function loadOAuthCredentials(): LoadCredentialsResult {
+export function loadOAuthCredentials(source?: CredentialSource): LoadCredentialsResult {
 	if (process.env.TEST_CREDENTIALS_PATH) {
 		return loadFromTestCredentials()
 	}
 
+	const effectiveSource = source ?? "auto"
+
+	if (effectiveSource === "claude-code") {
+		const result = loadFromClaudeCode()
+		if (result.success) return result
+		return {
+			success: false,
+			error: "No Claude Code credentials found. Please authenticate via Claude Code.",
+		}
+	}
+
+	if (effectiveSource === "opencode") {
+		const result = loadFromOpenCode()
+		if (result.success) return result
+		return {
+			success: false,
+			error: "No OpenCode credentials found. Please authenticate via OpenCode.",
+		}
+	}
+
+	// source === "auto": try all sources in priority order
 	const claudeCodeResult = loadFromClaudeCode()
 	if (claudeCodeResult.success) return claudeCodeResult
 

@@ -5,6 +5,7 @@ import {
 	type UsageData,
 	createOAuthApi,
 } from "../data/oauth-api"
+import type { CredentialSource } from "../data/oauth-credentials"
 
 export interface RateLimitState {
 	fiveHour: {
@@ -12,6 +13,10 @@ export interface RateLimitState {
 		resetsAt: Date
 	} | null
 	sevenDay: {
+		utilization: number
+		resetsAt: Date
+	} | null
+	sevenDayOpus: {
 		utilization: number
 		resetsAt: Date
 	} | null
@@ -48,9 +53,9 @@ export class OAuthMonitor {
 		profile: null,
 	}
 
-	constructor(config: ResolvedConfig) {
+	constructor(config: ResolvedConfig, credentialSource?: CredentialSource) {
 		this.config = config
-		this.api = createOAuthApi()
+		this.api = createOAuthApi(undefined, credentialSource)
 	}
 
 	getState(): OAuthMonitorState {
@@ -94,6 +99,12 @@ export class OAuthMonitor {
 				? {
 						utilization: result.data.sevenDay.utilization,
 						resetsAt: result.data.sevenDay.resetsAt,
+					}
+				: null,
+			sevenDayOpus: result.data.sevenDayOpus
+				? {
+						utilization: result.data.sevenDayOpus.utilization,
+						resetsAt: result.data.sevenDayOpus.resetsAt,
 					}
 				: null,
 		}
@@ -171,6 +182,9 @@ export class OAuthMonitor {
 	}
 }
 
-export function createOAuthMonitor(config: ResolvedConfig): OAuthMonitor {
-	return new OAuthMonitor(config)
+export function createOAuthMonitor(
+	config: ResolvedConfig,
+	credentialSource?: CredentialSource,
+): OAuthMonitor {
+	return new OAuthMonitor(config, credentialSource)
 }

@@ -65,3 +65,59 @@ describe("CLI Argument Parsing", () => {
 		expect(assertions.allPassed()).toBe(true)
 	})
 })
+
+describe("Credential Source Selection (--source)", () => {
+	let mockServer: MockServerHandle
+	let context: TestContext
+
+	beforeAll(async () => {
+		mockServer = await startMockServer({ scenario: "healthy" })
+		context = await createTestContext({ mockServer, scenario: "healthy" })
+	})
+
+	afterAll(async () => {
+		await mockServer.stop()
+	})
+
+	it("should accept --source flag and show usage data", async () => {
+		const result = await runCli(["--once", "--source", "auto"], context)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("44%").stdoutContains("12%")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should accept -s shorthand for --source", async () => {
+		const result = await runCli(["--once", "-s", "auto"], context)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("44%")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should show --source option in help text", async () => {
+		const result = await runCli(["--help"], context)
+
+		const assertions = assertCli(result)
+			.exitSuccess()
+			.stdoutContains("--source")
+			.stdoutContains("claude-code")
+			.stdoutContains("opencode")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should accept USAGE_MONITOR_SOURCE environment variable", async () => {
+		const result = await runCli(["--once"], { ...context, env: { USAGE_MONITOR_SOURCE: "auto" } })
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("44%")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should reject invalid source value", async () => {
+		const result = await runCli(["--once", "--source", "invalid-source"], context)
+
+		expect(result.stdout + result.stderr).toMatch(/invalid|unknown|source/i)
+	})
+})

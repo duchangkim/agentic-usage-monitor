@@ -2,6 +2,7 @@ import { execSync, spawnSync } from "node:child_process"
 import { writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import type { CredentialSource } from "../data/oauth-credentials"
 
 const HORIZONTAL_PANE_SIZE = 20
 const VERTICAL_PANE_LINES = 3
@@ -11,6 +12,7 @@ type Position = "left" | "right" | "top" | "bottom"
 interface LaunchArgs {
 	position: Position
 	sessionName: string
+	source?: CredentialSource
 	help: boolean
 	command: string[]
 }
@@ -94,6 +96,13 @@ function parseLaunchArgs(args: string[]): LaunchArgs {
 				}
 				i++
 				break
+			case "--source":
+				i++
+				if (i < args.length) {
+					result.source = args[i] as CredentialSource
+				}
+				i++
+				break
 			case "-h":
 			case "--help":
 				result.help = true
@@ -145,9 +154,17 @@ function getTerminalSize(): { cols: number; rows: number } {
 	return { cols, rows }
 }
 
-function createMonitorWrapper(monitorCmd: string, sessionName: string, position: Position): string {
-	const fullMonitorCmd =
+function createMonitorWrapper(
+	monitorCmd: string,
+	sessionName: string,
+	position: Position,
+	source?: CredentialSource,
+): string {
+	let fullMonitorCmd =
 		position === "top" || position === "bottom" ? `${monitorCmd} --compact` : monitorCmd
+	if (source) {
+		fullMonitorCmd = `${fullMonitorCmd} --source ${source}`
+	}
 
 	const wrapperPath = join(tmpdir(), `usage-monitor-${process.pid}-${Date.now()}`)
 	const script = `#!/usr/bin/env bash
@@ -247,7 +264,7 @@ export function runLaunch(args: string[]): void {
 
 	// Create monitor wrapper script
 	const monitorCmd = getMonitorCmd()
-	const wrapperPath = createMonitorWrapper(monitorCmd, sessionName, parsed.position)
+	const wrapperPath = createMonitorWrapper(monitorCmd, sessionName, parsed.position, parsed.source)
 	const wrapperCmd = `bash '${wrapperPath}'`
 
 	const s = JSON.stringify(sessionName)

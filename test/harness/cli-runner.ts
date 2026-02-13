@@ -8,6 +8,7 @@ export interface TestContext {
 	termHeight: number
 	timeout: number
 	credentialsPath?: string
+	env?: Record<string, string>
 }
 
 export interface TestResult {
@@ -45,6 +46,7 @@ export async function runCli(args: string[], context: TestContext): Promise<Test
 		TEST_CREDENTIALS_PATH: context.credentialsPath ?? TEST_CREDENTIALS_PATH,
 		TERM: "xterm-256color",
 		NO_COLOR: "1",
+		...context.env,
 	}
 
 	if (context.mockServer) {
