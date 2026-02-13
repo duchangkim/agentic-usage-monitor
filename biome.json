@@ -42,7 +42,7 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "dist", "*.lock", "bun.lock", "test-results"]
+		"ignore": ["node_modules", "dist", "*.lock", "bun.lock", "test-results", ".claude"]
 	},
 	"overrides": [
 		{

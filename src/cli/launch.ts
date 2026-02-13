@@ -227,7 +227,7 @@ export function runLaunch(args: string[]): void {
 
 	// Bind Shift+Enter to send ESC+CR — Claude Code expects this sequence for newline input
 	// tmux recognizes S-Enter via extended-keys; the binding intercepts it before forwarding
-	tmux(`bind-key -n S-Enter send-keys Escape Enter`)
+	tmux("bind-key -n S-Enter send-keys Escape Enter")
 
 	// Allow terminal passthrough sequences (DCS, OSC) to reach the outer terminal
 	// Requires tmux 3.3+; needed for some TUI features in claude code / opencode
