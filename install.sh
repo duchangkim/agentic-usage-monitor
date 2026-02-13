@@ -97,9 +97,13 @@ install_binary() {
     chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
     rm -rf "$TMPDIR"
 
-    # Remove macOS quarantine attribute
+    # macOS: remove quarantine attribute and ad-hoc codesign
     if [ "$OS" = "darwin" ]; then
         xattr -d com.apple.quarantine "${INSTALL_DIR}/${BINARY_NAME}" 2>/dev/null || true
+        if command -v codesign >/dev/null 2>&1; then
+            info "Signing binary (ad-hoc)..."
+            codesign --force --sign - "${INSTALL_DIR}/${BINARY_NAME}" 2>/dev/null || warn "Ad-hoc codesign failed (non-fatal)"
+        fi
     fi
 
     info "Installed to ${INSTALL_DIR}/${BINARY_NAME}"

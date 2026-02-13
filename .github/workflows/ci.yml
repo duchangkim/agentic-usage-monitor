@@ -65,3 +65,14 @@ jobs:
       - run: bun run build:binary
       - name: Binary E2E tests
         run: bun test test/binary-e2e
+
+  binary-e2e-macos:
+    runs-on: macos-latest
+    needs: [typecheck, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build:binary
+      - name: Binary E2E tests (macOS)
+        run: bun test test/binary-e2e

@@ -8,6 +8,7 @@
  */
 import { execSync } from "node:child_process"
 import { existsSync, mkdirSync } from "node:fs"
+import { platform } from "node:os"
 import pkg from "../package.json"
 
 const TARGETS = [
@@ -19,6 +20,22 @@ const TARGETS = [
 
 const ENTRY = "src/cli/index.ts"
 const DIST = "dist"
+
+function codesignIfDarwin(target: string, outputPath: string): void {
+	const isDarwinHost = platform() === "darwin"
+	// "bun" target builds for the current platform, so on macOS it produces a darwin binary
+	const isDarwinTarget = target.includes("darwin") || (target === "bun" && isDarwinHost)
+
+	if (isDarwinTarget && isDarwinHost) {
+		console.log(`  Signing: ${outputPath} (ad-hoc)`)
+		execSync(`codesign --force --sign - ${outputPath}`, {
+			stdio: "inherit",
+			cwd: process.cwd(),
+		})
+	} else if (isDarwinTarget && !isDarwinHost) {
+		console.log(`  Skipping codesign: ${outputPath} (darwin target on non-darwin host)`)
+	}
+}
 
 function buildBinary(target: string, outputName: string): void {
 	const cmd = [
@@ -33,6 +50,7 @@ function buildBinary(target: string, outputName: string): void {
 
 	console.log(`Building: ${outputName} (${target})`)
 	execSync(cmd, { stdio: "inherit", cwd: process.cwd() })
+	codesignIfDarwin(target, `${DIST}/${outputName}`)
 	console.log(`  -> ${DIST}/${outputName}`)
 }
 

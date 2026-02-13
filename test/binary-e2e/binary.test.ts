@@ -30,6 +30,23 @@ describe("Compiled Binary E2E", () => {
 		expect(binaryExists).toBe(true)
 	})
 
+	it("should have valid code signature on macOS", async () => {
+		if (!binaryExists) return
+		if (process.platform !== "darwin") {
+			console.log("Skipping: codesign verification only available on macOS")
+			return
+		}
+
+		const result = await $`codesign --verify --strict ${BINARY_PATH}`.quiet().nothrow()
+
+		if (result.exitCode !== 0) {
+			const detail = await $`codesign -dv --verbose=4 ${BINARY_PATH}`.quiet().nothrow()
+			console.log("Codesign detail:", detail.stderr.toString())
+		}
+
+		expect(result.exitCode).toBe(0)
+	})
+
 	it("should display version", async () => {
 		if (!binaryExists) return
 		const result = await runBinary(["--version"], context)
