@@ -23,6 +23,13 @@ Real-time Claude rate limit monitoring tool that runs alongside OpenCode using t
 - **Package Manager**: Bun (bun.lock)
 - **Linter**: Biome
 
+## Coding Principles
+
+- **Think before coding**: State assumptions explicitly. If ambiguous, ask before implementing. Don't hide confusion — surface tradeoffs and push back when a simpler approach exists.
+- **Simplicity first**: Minimum code that solves the problem. No speculative features, unnecessary abstractions, or error handling for impossible scenarios.
+- **Surgical changes**: Touch only what's requested. Don't refactor, restyle, or "improve" adjacent code. If you notice unrelated issues, mention them — don't fix them silently.
+- **Goal-driven**: Define success criteria (ideally tests) before writing code. Loop until verified. See [Testing Strategy](#testing-strategy) for test-first requirements.
+
 ## Build / Lint / Test Commands
 
 ```bash
@@ -122,28 +129,30 @@ agentic-usage-monitor/
 - A feature without tests is not considered complete
 - Tests must verify the newly added behavior, not just that existing tests still pass
 
-| Change Type | Required Test |
-| --- | --- |
+| Change Type            | Required Test                                              |
+| ---------------------- | ---------------------------------------------------------- |
 | New tmux option/config | E2E test verifying the option is set (`tmux show-options`) |
-| New CLI flag/argument | E2E test in `cli.test.ts` checking output or behavior |
-| New API handling logic | E2E test in `api.test.ts` with mock server scenario |
-| TUI rendering change | E2E test in `tui.test.ts` verifying rendered output |
-| Bug fix | Test that reproduces the bug and verifies the fix |
+| New CLI flag/argument  | E2E test in `cli.test.ts` checking output or behavior      |
+| New API handling logic | E2E test in `api.test.ts` with mock server scenario        |
+| TUI rendering change   | E2E test in `tui.test.ts` verifying rendered output        |
+| Bug fix                | Test that reproduces the bug and verifies the fix          |
 
 **Environment-dependent tests** should gracefully skip when prerequisites are unavailable (e.g., tmux not installed) rather than failing:
 
 ```typescript
 // GOOD: Skip gracefully when environment doesn't support the test
 if (!tmuxAvailable) {
-  console.log("Skipping: tmux not available")
-  return
+  console.log("Skipping: tmux not available");
+  return;
 }
 
 // GOOD: Skip when specific feature is not supported
-const result = await $`tmux show-options -t ${session} extended-keys`.quiet().nothrow()
+const result = await $`tmux show-options -t ${session} extended-keys`
+  .quiet()
+  .nothrow();
 if (result.exitCode !== 0) {
-  console.log("Skipping: extended-keys option not supported (tmux < 3.2)")
-  return
+  console.log("Skipping: extended-keys option not supported (tmux < 3.2)");
+  return;
 }
 ```
 
@@ -256,11 +265,11 @@ if (!result.success) {
 
 Test-only variables:
 
-| Variable                | Description             |
-| ----------------------- | ----------------------- |
-| `OAUTH_API_BASE`        | Override OAuth API URL  |
-| `TEST_CREDENTIALS_PATH` | Mock credentials path   |
-| `SCENARIO`              | Mock server scenario    |
+| Variable                | Description            |
+| ----------------------- | ---------------------- |
+| `OAUTH_API_BASE`        | Override OAuth API URL |
+| `TEST_CREDENTIALS_PATH` | Mock credentials path  |
+| `SCENARIO`              | Mock server scenario   |
 
 ## Verification Checklist
 
@@ -279,11 +288,11 @@ Before considering a task complete:
 
 Commits should be made in **logical work units**, not by phase or file:
 
-| Good Commit Unit | Bad Commit Unit |
-| --- | --- |
-| "Remove Admin API components" | "Phase 1 changes" |
+| Good Commit Unit                          | Bad Commit Unit    |
+| ----------------------------------------- | ------------------ |
+| "Remove Admin API components"             | "Phase 1 changes"  |
 | "Rename package to agentic-usage-monitor" | "Update all files" |
-| "Update documentation for v1.0" | "Fix stuff" |
+| "Update documentation for v1.0"           | "Fix stuff"        |
 
 ### Commit Message Format
 
@@ -331,6 +340,7 @@ delegate_task(
 ```
 
 This ensures:
+
 - Atomic commits with proper granularity
 - Consistent commit message format
 - Proper use of git commands (no force push to main, etc.)
