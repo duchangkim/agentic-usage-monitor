@@ -1,7 +1,4 @@
 import { execSync, spawnSync } from "node:child_process"
-import { writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import type { CredentialSource } from "../data/oauth-credentials"
 
 const HORIZONTAL_PANE_SIZE = 20
@@ -34,10 +31,10 @@ function printUsage(): void {
 Run any command with usage monitor in a tmux pane.
 
 OPTIONS:
-    -l, --left            put monitor on left (default: right)
+    -l, --left            put monitor on left
     -r, --right           put monitor on right
     -t, --top             put monitor on top
-    -b, --bottom          put monitor on bottom
+    -b, --bottom          put monitor on bottom (default)
     -s, --session NAME    tmux session name (default: monitor-PID)
     -h, --help            show this help
 
@@ -58,7 +55,7 @@ REQUIREMENTS:
 
 function parseLaunchArgs(args: string[]): LaunchArgs {
 	const result: LaunchArgs = {
-		position: "right",
+		position: "bottom",
 		sessionName: process.env.USAGE_MONITOR_SESSION ?? `monitor-${process.pid}`,
 		help: false,
 		command: [],
@@ -154,34 +151,18 @@ function getTerminalSize(): { cols: number; rows: number } {
 	return { cols, rows }
 }
 
-function createMonitorWrapper(
+function buildMonitorCmd(
 	monitorCmd: string,
 	sessionName: string,
 	position: Position,
 	source?: CredentialSource,
 ): string {
-	let fullMonitorCmd =
-		position === "top" || position === "bottom" ? `${monitorCmd} --compact` : monitorCmd
+	let cmd = position === "top" || position === "bottom" ? `${monitorCmd} --compact` : monitorCmd
 	if (source) {
-		fullMonitorCmd = `${fullMonitorCmd} --source ${source}`
+		cmd = `${cmd} --source ${source}`
 	}
-
-	const wrapperPath = join(tmpdir(), `usage-monitor-${process.pid}-${Date.now()}`)
-	const script = `#!/usr/bin/env bash
-rm -f "${wrapperPath}"
-stty raw -echo 2>/dev/null
-${fullMonitorCmd} </dev/null &
-MPID=$!
-trap 'kill $MPID 2>/dev/null' EXIT
-while IFS= read -r -n1 key 2>/dev/null; do
-    case "$key" in
-        q|Q) tmux kill-session -t "${sessionName}" 2>/dev/null; exit 0;;
-    esac
-done
-wait $MPID 2>/dev/null
-`
-	writeFileSync(wrapperPath, script, { mode: 0o755 })
-	return wrapperPath
+	// Pass session name via environment variable so the monitor process can kill the session on 'q'
+	return `USAGE_MONITOR_SESSION=${JSON.stringify(sessionName)} ${cmd}`
 }
 
 export function runLaunch(args: string[]): void {
@@ -262,27 +243,26 @@ export function runLaunch(args: string[]): void {
 	)
 	tmux(`set-option -t ${JSON.stringify(sessionName)} status-right-length 40`)
 
-	// Create monitor wrapper script
+	// Build monitor command (runs directly, no bash wrapper)
 	const monitorCmd = getMonitorCmd()
-	const wrapperPath = createMonitorWrapper(monitorCmd, sessionName, parsed.position, parsed.source)
-	const wrapperCmd = `bash '${wrapperPath}'`
+	const fullMonitorCmd = buildMonitorCmd(monitorCmd, sessionName, parsed.position, parsed.source)
 
 	const s = JSON.stringify(sessionName)
 
 	// Split based on position
 	switch (parsed.position) {
 		case "left":
-			tmux(`split-window -h -b -t ${s} -l ${HORIZONTAL_PANE_SIZE}% "${wrapperCmd}"`)
+			tmux(`split-window -h -b -t ${s} -l ${HORIZONTAL_PANE_SIZE}% "${fullMonitorCmd}"`)
 			tmux(`select-pane -t ${s}:0.0 -T ${JSON.stringify(monitorPaneName)}`)
 			tmux(`select-pane -t ${s}:0.1`)
 			break
 		case "right":
-			tmux(`split-window -h -t ${s} -l ${HORIZONTAL_PANE_SIZE}% "${wrapperCmd}"`)
+			tmux(`split-window -h -t ${s} -l ${HORIZONTAL_PANE_SIZE}% "${fullMonitorCmd}"`)
 			tmux(`select-pane -t ${s}:0.1 -T ${JSON.stringify(monitorPaneName)}`)
 			tmux(`select-pane -t ${s}:0.0`)
 			break
 		case "top":
-			tmux(`split-window -v -b -t ${s} -l ${VERTICAL_PANE_LINES} "${wrapperCmd}"`)
+			tmux(`split-window -v -b -t ${s} -l ${VERTICAL_PANE_LINES} "${fullMonitorCmd}"`)
 			tmux(`select-pane -t ${s}:0.0 -T ${JSON.stringify(monitorPaneName)}`)
 			tmux(`select-pane -t ${s}:0.1`)
 			tmux(
@@ -290,7 +270,7 @@ export function runLaunch(args: string[]): void {
 			)
 			break
 		case "bottom":
-			tmux(`split-window -v -t ${s} -l ${VERTICAL_PANE_LINES} "${wrapperCmd}"`)
+			tmux(`split-window -v -t ${s} -l ${VERTICAL_PANE_LINES} "${fullMonitorCmd}"`)
 			tmux(`select-pane -t ${s}:0.1 -T ${JSON.stringify(monitorPaneName)}`)
 			tmux(`select-pane -t ${s}:0.0`)
 			tmux(

@@ -13,7 +13,6 @@ export const WidgetConfigSchema = z.object({
 	style: z.enum(["rounded", "square", "double", "simple"]).optional(),
 	position: z.enum(["left", "right", "top", "bottom"]).optional(),
 	compact: z.boolean().optional(),
-	colors: z.boolean().optional(),
 })
 
 export const ConfigSchema = z.object({
@@ -39,7 +38,6 @@ export interface ResolvedConfig {
 		style: "rounded" | "square" | "double" | "simple"
 		position: "left" | "right" | "top" | "bottom"
 		compact: boolean
-		colors: boolean
 	}
 }
 
@@ -54,9 +52,8 @@ export function getDefaultConfig(): ResolvedConfig {
 		},
 		widget: {
 			style: "rounded",
-			position: "right",
+			position: "bottom",
 			compact: false,
-			colors: true,
 		},
 	}
 }
@@ -76,7 +73,6 @@ export function resolveConfig(partial: Config): ResolvedConfig {
 			style: partial.widget?.style ?? defaults.widget.style,
 			position: partial.widget?.position ?? defaults.widget.position,
 			compact: partial.widget?.compact ?? defaults.widget.compact,
-			colors: partial.widget?.colors ?? defaults.widget.colors,
 		},
 	}
 }

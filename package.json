@@ -4,11 +4,9 @@
 	"description": "Real-time Claude rate limit monitoring tool for AI coding agents",
 	"type": "module",
 	"bin": {
-		"usage-monitor": "./dist/cli.js",
-		"with-monitor": "./bin/with-monitor",
-		"usage-monitor-setup": "./bin/setup"
+		"usage-monitor": "./dist/cli.js"
 	},
-	"files": ["dist", "bin"],
+	"files": ["dist"],
 	"scripts": {
 		"build": "VERSION=$(node -p \"require('./package.json').version\") && bun build src/cli/index.ts --define \"__PKG_VERSION__=\\\"$VERSION\\\"\" --outfile dist/cli.js --target bun",
 		"build:cli": "VERSION=$(node -p \"require('./package.json').version\") && bun build src/cli/index.ts --define \"__PKG_VERSION__=\\\"$VERSION\\\"\" --outfile dist/cli.js --target bun",
