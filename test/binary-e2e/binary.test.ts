@@ -114,6 +114,131 @@ describe("Compiled Binary E2E", () => {
 	})
 })
 
+describe("Compiled Binary Uninstall", () => {
+	it("should detect binary install and show binary location", async () => {
+		if (!binaryExists) return
+
+		// Copy binary to temp location
+		const tmpPath = `/tmp/usage-monitor-detect-${Date.now()}`
+		await $`cp ${BINARY_PATH} ${tmpPath}`.quiet()
+
+		try {
+			// Pipe "n" to cancel — should show Binary location, NOT "bun remove"
+			const proc = Bun.spawn([tmpPath, "uninstall"], {
+				stdin: "pipe",
+				stdout: "pipe",
+				stderr: "pipe",
+			})
+
+			// Wait briefly for prompt to appear, then send "n" to cancel
+			await sleep(500)
+			proc.stdin.write("n")
+			proc.stdin.flush()
+			proc.stdin.end()
+
+			const stdout = await new Response(proc.stdout).text()
+			await proc.exited
+
+			const binaryName = tmpPath.split("/").pop() ?? ""
+			expect(stdout).toContain("Binary location:")
+			expect(stdout).toContain(binaryName)
+			expect(stdout).not.toContain("bun remove")
+			expect(stdout).toContain("Cancelled")
+		} finally {
+			await $`rm -f ${tmpPath}`.quiet().nothrow()
+		}
+	})
+
+	it("should actually delete binary when confirmed with y", async () => {
+		if (!binaryExists) return
+
+		const tmpPath = `/tmp/usage-monitor-delete-${Date.now()}`
+		await $`cp ${BINARY_PATH} ${tmpPath}`.quiet()
+
+		// Verify copy exists
+		expect(existsSync(tmpPath)).toBe(true)
+
+		const proc = Bun.spawn([tmpPath, "uninstall"], {
+			stdin: "pipe",
+			stdout: "pipe",
+			stderr: "pipe",
+		})
+
+		await sleep(500)
+		proc.stdin.write("y")
+		proc.stdin.flush()
+		proc.stdin.end()
+
+		const stdout = await new Response(proc.stdout).text()
+		await proc.exited
+
+		// Binary should be deleted
+		expect(existsSync(tmpPath)).toBe(false)
+		expect(stdout).toContain("Uninstalled successfully")
+
+		// Verify the binary is actually gone — executing it should fail
+		const retry = await $`${tmpPath} --version`.quiet().nothrow()
+		expect(retry.exitCode).not.toBe(0)
+	})
+
+	it("should NOT delete binary when cancelled with n", async () => {
+		if (!binaryExists) return
+
+		const tmpPath = `/tmp/usage-monitor-cancel-${Date.now()}`
+		await $`cp ${BINARY_PATH} ${tmpPath}`.quiet()
+
+		try {
+			const proc = Bun.spawn([tmpPath, "uninstall"], {
+				stdin: "pipe",
+				stdout: "pipe",
+				stderr: "pipe",
+			})
+
+			await sleep(500)
+			proc.stdin.write("n")
+			proc.stdin.flush()
+			proc.stdin.end()
+
+			const stdout = await new Response(proc.stdout).text()
+			await proc.exited
+
+			// Binary should still exist
+			expect(existsSync(tmpPath)).toBe(true)
+			expect(stdout).toContain("Cancelled")
+		} finally {
+			await $`rm -f ${tmpPath}`.quiet().nothrow()
+		}
+	})
+
+	it("should show success message with Removed path after deletion", async () => {
+		if (!binaryExists) return
+
+		const tmpPath = `/tmp/usage-monitor-msg-${Date.now()}`
+		await $`cp ${BINARY_PATH} ${tmpPath}`.quiet()
+
+		const proc = Bun.spawn([tmpPath, "uninstall"], {
+			stdin: "pipe",
+			stdout: "pipe",
+			stderr: "pipe",
+		})
+
+		await sleep(500)
+		proc.stdin.write("y")
+		proc.stdin.flush()
+		proc.stdin.end()
+
+		const stdout = await new Response(proc.stdout).text()
+		await proc.exited
+
+		// macOS resolves /tmp → /private/tmp, so compare with realpath-resolved name
+		const resolvedName = tmpPath.split("/").pop() ?? ""
+		expect(stdout).toContain("Removed:")
+		expect(stdout).toContain(resolvedName)
+		expect(stdout).toContain("Uninstalled successfully")
+		// Cleanup not needed — file is already deleted
+	})
+})
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const checkTmuxAvailable = async (): Promise<boolean> => {
