@@ -7,6 +7,7 @@ const VERSION =
 		? __PKG_VERSION__
 		: (process.env.npm_package_version ?? "dev")
 
+import { execSync } from "node:child_process"
 import { loadConfig } from "../config"
 import { getAgent, getAgentNames, loadAgentConfig, resolveAgentConfig } from "../config/agents"
 import { type CredentialSource, VALID_CREDENTIAL_SOURCES } from "../data/oauth-credentials"
@@ -20,6 +21,7 @@ import {
 	renderStatusBar,
 	renderUsageWidget,
 } from "../tui/widget"
+import { type PaneMoveDirection, moveMonitorPane } from "./pane-manager"
 
 const MIN_WIDTH = 28
 const MAX_WIDTH = 60
@@ -104,6 +106,8 @@ ${text("AGENTS:", ANSI.fg.yellow)}
 ${text("SUBCOMMANDS:", ANSI.fg.yellow)}
   launch              Run a command with usage monitor in a tmux pane
                       Use 'usage-monitor launch --help' for details
+  update              Self-update to the latest version (binary install only)
+  uninstall           Remove usage-monitor from your system (binary install only)
 
 ${text("OPTIONS:", ANSI.fg.yellow)}
   -1, --once        Show usage once and exit (no auto-refresh)
@@ -225,6 +229,18 @@ async function main(): Promise<void> {
 		process.exit(0)
 	}
 
+	if (process.argv[2] === "update") {
+		const { runUpdate } = await import("./update")
+		await runUpdate()
+		process.exit(0)
+	}
+
+	if (process.argv[2] === "uninstall") {
+		const { runUninstall } = await import("./uninstall")
+		await runUninstall()
+		process.exit(0)
+	}
+
 	// Check if first argument is an agent name
 	const firstArg = process.argv[2]
 	if (firstArg && !firstArg.startsWith("-")) {
@@ -298,7 +314,7 @@ async function main(): Promise<void> {
 
 	const monitor = createOAuthMonitor(config, args.source)
 
-	const compactMode = args.compact || config.widget.compact
+	let compactMode = args.compact || config.widget.compact
 
 	if (args.once) {
 		const width = getTerminalWidth()
@@ -349,16 +365,102 @@ async function main(): Promise<void> {
 		}
 	})
 
+	const tmuxSession = process.env.USAGE_MONITOR_SESSION
+
 	const cleanup = (): void => {
 		monitor.stop()
+		if (process.stdin.isTTY) {
+			process.stdin.setRawMode(false)
+		}
 		showCursor()
 		clearScreen()
 		console.log("Goodbye!")
 		process.exit(0)
 	}
 
-	process.on("SIGINT", cleanup)
-	process.on("SIGTERM", cleanup)
+	const killTmuxSession = (): void => {
+		if (tmuxSession) {
+			try {
+				execSync(`tmux kill-session -t ${JSON.stringify(tmuxSession)}`, { stdio: "ignore" })
+			} catch {
+				// Session may not exist, ignore
+			}
+			process.exit(0)
+		} else {
+			cleanup()
+		}
+	}
+
+	// Move monitor pane to a new position within the tmux session
+	const monitorPaneId = process.env.TMUX_PANE
+
+	const movePane = (direction: PaneMoveDirection): void => {
+		if (!tmuxSession || !monitorPaneId) return
+		const result = moveMonitorPane(tmuxSession, monitorPaneId, direction, compactMode)
+		if (result.success) {
+			compactMode = result.newCompactMode
+			render()
+		}
+	}
+
+	// Keyboard input handling
+	if (process.stdin.isTTY) {
+		process.stdin.setRawMode(true)
+		process.stdin.resume()
+		process.stdin.on("data", (data: Buffer) => {
+			const key = data.toString()
+
+			// q/Q — exit
+			if (key === "q" || key === "Q") {
+				killTmuxSession()
+				return
+			}
+
+			// Ctrl+C
+			if (key === "\x03") {
+				killTmuxSession()
+				return
+			}
+
+			// Tab — toggle compact/detailed mode (only in left/right position)
+			if (key === "\t") {
+				// Only toggle if we're not in a forced compact position (top/bottom)
+				// In tmux, we can't reliably detect position, so just toggle the mode
+				// Note: compact mode is forced when position is top/bottom via Shift+Arrow
+				if (!compactMode) {
+					compactMode = true
+				} else {
+					compactMode = false
+				}
+				clearScreen()
+				render()
+				return
+			}
+
+			// Shift+Arrow keys (ANSI escape sequences with extended-keys)
+			// \x1b[1;2A = Shift+Up, \x1b[1;2B = Shift+Down
+			// \x1b[1;2C = Shift+Right, \x1b[1;2D = Shift+Left
+			if (key === "\x1b[1;2A") {
+				movePane("up")
+				return
+			}
+			if (key === "\x1b[1;2B") {
+				movePane("down")
+				return
+			}
+			if (key === "\x1b[1;2C") {
+				movePane("right")
+				return
+			}
+			if (key === "\x1b[1;2D") {
+				movePane("left")
+				return
+			}
+		})
+	}
+
+	process.on("SIGINT", killTmuxSession)
+	process.on("SIGTERM", killTmuxSession)
 	process.stdout.on("resize", render)
 
 	monitor.start()
