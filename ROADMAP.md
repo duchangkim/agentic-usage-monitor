@@ -15,3 +15,20 @@
 - [ ] `usage-monitor update` - Self-update command
 - [ ] `usage-monitor uninstall` - Self-removal command
 - [ ] Final CLI interface simplification
+- [ ] Default pane position: `bottom` (compact mode)
+- [ ] Interactive keyboard shortcuts in monitor pane
+  - `Shift+Arrow`: Move pane position (top/bottom/left/right)
+  - `Tab`: Toggle compact/detailed mode (ignored in top/bottom)
+  - `q`: Exit (moved from bash wrapper to Bun process)
+- [ ] Migrate keyboard handling from bash wrapper to Bun process
+
+## TUI Enhancement & Auto-update
+
+- [ ] TUI graph refinement (improved bar/progress visuals)
+- [ ] Configurable color themes
+- [ ] Auto-update check on startup with interactive y/n prompt
+
+## Future
+
+- [ ] Multi-vendor support (GitHub Copilot, Antigravity, Codex, etc.)
+- [ ] Windows OS support
