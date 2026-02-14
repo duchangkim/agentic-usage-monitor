@@ -1,5 +1,12 @@
 import { type MockScenario, SCENARIOS, getScenario } from "../fixtures/scenarios"
 
+// Well-known test tokens for token refresh testing.
+// When the mock server sees EXPIRED_TOKEN, it returns 401 (simulating an expired access token).
+// The /v1/oauth/token endpoint accepts VALID_REFRESH_TOKEN and returns REFRESHED_TOKEN.
+export const EXPIRED_TOKEN = "mock-expired-token"
+export const REFRESHED_TOKEN = "mock-refreshed-token"
+export const VALID_REFRESH_TOKEN = "mock-valid-refresh-token"
+
 export interface MockServerOptions {
 	port?: number
 	scenario?: string
@@ -58,6 +65,49 @@ export async function startMockServer(options: MockServerOptions = {}): Promise<
 					status: 500,
 					headers: { "Content-Type": "application/json" },
 				})
+			}
+
+			// Token refresh endpoint: POST /v1/oauth/token
+			if (path === "/v1/oauth/token" && req.method === "POST") {
+				const body = (await req.json()) as {
+					grant_type?: string
+					refresh_token?: string
+					client_id?: string
+				}
+				if (body.grant_type === "refresh_token" && body.refresh_token === VALID_REFRESH_TOKEN) {
+					return new Response(
+						JSON.stringify({
+							access_token: REFRESHED_TOKEN,
+							refresh_token: "mock-new-refresh-token",
+							expires_in: 3600,
+						}),
+						{ status: 200, headers: { "Content-Type": "application/json" } },
+					)
+				}
+				// Invalid or expired refresh token
+				return new Response(
+					JSON.stringify({
+						error: "invalid_grant",
+						error_description: "The refresh token is expired or invalid",
+					}),
+					{ status: 400, headers: { "Content-Type": "application/json" } },
+				)
+			}
+
+			// Token-based auth: if the request uses the known expired token, force 401
+			// regardless of scenario (simulates real API rejecting an expired access token).
+			const authHeader = req.headers.get("authorization")
+			if (authHeader === `Bearer ${EXPIRED_TOKEN}`) {
+				return new Response(
+					JSON.stringify({
+						error: {
+							type: "authentication_error",
+							message:
+								"OAuth token has expired. Please obtain a new token or refresh your existing token.",
+						},
+					}),
+					{ status: 401, headers: { "Content-Type": "application/json" } },
+				)
 			}
 
 			if (scenario.delay) {

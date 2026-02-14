@@ -21,6 +21,7 @@
   - `Tab`: Toggle compact/detailed mode (ignored in top/bottom)
   - `q`: Exit (moved from bash wrapper to Bun process)
 - [x] Migrate keyboard handling from bash wrapper to Bun process
+- [x] OAuth token auto-refresh on 401 (reactive, with disk write-back)
 
 ## TUI Enhancement & Auto-update
 

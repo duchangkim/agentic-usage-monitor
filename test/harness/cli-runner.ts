@@ -51,6 +51,7 @@ export async function runCli(args: string[], context: TestContext): Promise<Test
 
 	if (context.mockServer) {
 		env.OAUTH_API_BASE = context.mockServer.url + "/api/oauth"
+		env.OAUTH_TOKEN_URL = context.mockServer.url + "/v1/oauth/token"
 	}
 
 	const proc = Bun.spawn(["bun", "run", CLI_PATH, ...args], {

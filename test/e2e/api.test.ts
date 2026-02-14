@@ -1,10 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test"
-import { writeFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { assertCli } from "../harness/assertions"
 import { type TestContext, createTestContext, runCli } from "../harness/cli-runner"
-import { type MockServerHandle, startMockServer } from "../mock-server/oauth-server"
+import {
+	EXPIRED_TOKEN,
+	type MockServerHandle,
+	REFRESHED_TOKEN,
+	VALID_REFRESH_TOKEN,
+	startMockServer,
+} from "../mock-server/oauth-server"
 
 describe("API Response Handling", () => {
 	describe("Successful Responses", () => {
@@ -161,6 +167,113 @@ describe("Expired Token Handling", () => {
 			const paths = requests.map((r) => r.path)
 			expect(paths).toContain("/api/oauth/usage")
 			expect(paths).toContain("/api/oauth/profile")
+		} finally {
+			await server.stop()
+		}
+	})
+})
+
+describe("Token Auto-Refresh", () => {
+	it("should auto-refresh expired token and display usage data", async () => {
+		// Credential file with an expired access token but a valid refresh token.
+		// The mock server returns 401 for EXPIRED_TOKEN, triggering the refresh flow.
+		const credentials = {
+			access_token: EXPIRED_TOKEN,
+			refresh_token: VALID_REFRESH_TOKEN,
+			expires_at: Date.now() - 3600 * 1000,
+		}
+		const tmpPath = join(tmpdir(), `refresh-ok-${Date.now()}.json`)
+		writeFileSync(tmpPath, JSON.stringify(credentials))
+
+		const server = await startMockServer({ scenario: "healthy" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "healthy" })
+		ctx.credentialsPath = tmpPath
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			// After auto-refresh, the retried request should succeed
+			const assertions = assertCli(result).exitSuccess().stdoutContains("44%").stdoutContains("12%")
+			expect(assertions.allPassed()).toBe(true)
+
+			// Verify the refresh endpoint was called
+			const requests = server.getRequestLog()
+			const paths = requests.map((r) => r.path)
+			expect(paths).toContain("/v1/oauth/token")
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should write refreshed token back to credentials file", async () => {
+		const credentials = {
+			access_token: EXPIRED_TOKEN,
+			refresh_token: VALID_REFRESH_TOKEN,
+			expires_at: Date.now() - 3600 * 1000,
+		}
+		const tmpPath = join(tmpdir(), `refresh-writeback-${Date.now()}.json`)
+		writeFileSync(tmpPath, JSON.stringify(credentials))
+
+		const server = await startMockServer({ scenario: "healthy" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "healthy" })
+		ctx.credentialsPath = tmpPath
+
+		try {
+			await runCli(["--once"], ctx)
+
+			// Read back the credentials file — it should now have the refreshed token
+			const updated = JSON.parse(readFileSync(tmpPath, "utf-8"))
+			expect(updated.access_token).toBe(REFRESHED_TOKEN)
+			expect(updated.access_token).not.toBe(EXPIRED_TOKEN)
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should show error when refresh token is invalid", async () => {
+		// Credential file with expired access token AND an invalid refresh token
+		const credentials = {
+			access_token: EXPIRED_TOKEN,
+			refresh_token: "mock-invalid-refresh-token",
+			expires_at: Date.now() - 3600 * 1000,
+		}
+		const tmpPath = join(tmpdir(), `refresh-fail-${Date.now()}.json`)
+		writeFileSync(tmpPath, JSON.stringify(credentials))
+
+		const server = await startMockServer({ scenario: "healthy" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "healthy" })
+		ctx.credentialsPath = tmpPath
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			// Should show actionable re-authenticate message
+			const output = result.stdout + result.stderr
+			expect(output).toMatch(/expired|re-authenticate|login/i)
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should show error when no refresh token is available", async () => {
+		// Credential file with expired access token and NO refresh token
+		const credentials = {
+			access_token: EXPIRED_TOKEN,
+			expires_at: Date.now() - 3600 * 1000,
+		}
+		const tmpPath = join(tmpdir(), `no-refresh-${Date.now()}.json`)
+		writeFileSync(tmpPath, JSON.stringify(credentials))
+
+		const server = await startMockServer({ scenario: "healthy" })
+		const ctx = await createTestContext({ mockServer: server, scenario: "healthy" })
+		ctx.credentialsPath = tmpPath
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			// Should show actionable re-authenticate message
+			const output = result.stdout + result.stderr
+			expect(output).toMatch(/expired|re-authenticate|login/i)
 		} finally {
 			await server.stop()
 		}

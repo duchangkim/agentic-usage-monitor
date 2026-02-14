@@ -3,6 +3,7 @@ import {
 	type OAuthCredentials,
 	loadOAuthCredentials,
 } from "./oauth-credentials"
+import { refreshOAuthToken, writeBackCredentials } from "./oauth-refresh"
 
 const OAUTH_API_BASE = process.env.OAUTH_API_BASE ?? "https://api.anthropic.com/api/oauth"
 const ANTHROPIC_BETA_VERSION = "oauth-2025-04-20"
@@ -85,6 +86,7 @@ function createError(statusCode: number, responseBody: string): OAuthApiError {
 export class ClaudeOAuthApi {
 	private credentials: OAuthCredentials | null = null
 	private credentialSource: CredentialSource | undefined
+	private actualSource: "claude-code" | "opencode" | null = null
 
 	constructor(credentials?: OAuthCredentials, credentialSource?: CredentialSource) {
 		if (credentials) {
@@ -111,6 +113,7 @@ export class ClaudeOAuthApi {
 		}
 
 		this.credentials = result.credentials
+		this.actualSource = result.source
 		return { success: true, data: this.credentials }
 	}
 
@@ -138,10 +141,45 @@ export class ClaudeOAuthApi {
 					this.credentials = null
 
 					if (!isRetry) {
-						const refreshed = loadOAuthCredentials(this.credentialSource)
-						if (refreshed.success && refreshed.credentials.accessToken !== usedToken) {
-							this.credentials = refreshed.credentials
+						// Step 1: Re-read credentials from disk (another process may have refreshed them)
+						const reloaded = loadOAuthCredentials(this.credentialSource)
+						if (reloaded.success && reloaded.credentials.accessToken !== usedToken) {
+							this.credentials = reloaded.credentials
+							this.actualSource = reloaded.source
 							return this.request<T>(endpoint, true)
+						}
+
+						// Step 2: Token on disk is still the same (expired).
+						// Try to refresh using the refresh_token.
+						const refreshToken = reloaded.success ? reloaded.credentials.refreshToken : undefined
+						if (refreshToken) {
+							const refreshResult = await refreshOAuthToken(refreshToken)
+							if (refreshResult.success) {
+								this.credentials = refreshResult.credentials
+								const source = reloaded.success ? reloaded.source : this.actualSource
+								if (source) {
+									writeBackCredentials(source, refreshResult.credentials)
+								}
+								return this.request<T>(endpoint, true)
+							}
+							// Refresh token is also expired/invalid — give actionable message
+							return {
+								success: false,
+								error: {
+									type: "authentication_error",
+									message: "Session expired. Re-authenticate via /login",
+									statusCode: 401,
+								},
+							}
+						}
+						// No refresh token available at all
+						return {
+							success: false,
+							error: {
+								type: "authentication_error",
+								message: "OAuth token expired. Re-authenticate via /login",
+								statusCode: 401,
+							},
 						}
 					}
 				}
