@@ -237,6 +237,39 @@ describe("Compiled Binary Uninstall", () => {
 		expect(stdout).toContain("Uninstalled successfully")
 		// Cleanup not needed — file is already deleted
 	})
+
+	it("should warn about remaining usage-monitor in PATH after deletion", async () => {
+		if (!binaryExists) return
+
+		// This test relies on the fact that another usage-monitor exists in PATH
+		// (e.g. bun global install). If not, skip gracefully.
+		const which = await $`which usage-monitor`.quiet().nothrow()
+		if (which.exitCode !== 0) {
+			console.log("Skipping: no other usage-monitor in PATH to detect")
+			return
+		}
+
+		const tmpPath = `/tmp/usage-monitor-shadow-${Date.now()}`
+		await $`cp ${BINARY_PATH} ${tmpPath}`.quiet()
+
+		const proc = Bun.spawn([tmpPath, "uninstall"], {
+			stdin: "pipe",
+			stdout: "pipe",
+			stderr: "pipe",
+		})
+
+		await sleep(500)
+		proc.stdin.write("y")
+		proc.stdin.flush()
+		proc.stdin.end()
+
+		const stdout = await new Response(proc.stdout).text()
+		await proc.exited
+
+		// Should warn that another usage-monitor still exists in PATH
+		expect(stdout).toMatch(/another|still|found|remain/i)
+		expect(stdout).toContain("usage-monitor")
+	})
 })
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

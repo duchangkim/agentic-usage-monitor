@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process"
 import { existsSync, unlinkSync } from "node:fs"
 
 function isBinaryInstall(): boolean {
@@ -73,6 +74,25 @@ export async function runUninstall(): Promise<void> {
 			for (const p of existingConfigs) {
 				console.log(`    ${p}`)
 			}
+		}
+
+		// Check if another usage-monitor remains in PATH
+		try {
+			const remaining = execSync("which usage-monitor 2>/dev/null", {
+				encoding: "utf-8",
+			}).trim()
+			if (remaining) {
+				console.log("")
+				console.log(`  Warning: Another 'usage-monitor' still found at: ${remaining}`)
+				console.log("  To remove it as well:")
+				if (remaining.includes(".bun")) {
+					console.log("    bun remove -g agentic-usage-monitor")
+				} else {
+					console.log(`    rm ${remaining}`)
+				}
+			}
+		} catch {
+			// No other usage-monitor in PATH — clean uninstall
 		}
 
 		console.log("")
