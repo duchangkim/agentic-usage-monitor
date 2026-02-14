@@ -10,17 +10,17 @@
 
 ## v0.0.8 - Command Cleanup & UX
 
-- [ ] Remove deprecated `with-monitor` shell script completely
-- [ ] Remove redundant CLI flags and options
-- [ ] `usage-monitor update` - Self-update command
-- [ ] `usage-monitor uninstall` - Self-removal command
-- [ ] Final CLI interface simplification
-- [ ] Default pane position: `bottom` (compact mode)
-- [ ] Interactive keyboard shortcuts in monitor pane
+- [x] Remove deprecated `with-monitor` shell script completely
+- [x] Remove redundant CLI flags and options
+- [x] `usage-monitor update` - Self-update command
+- [x] `usage-monitor uninstall` - Self-removal command
+- [x] Final CLI interface simplification
+- [x] Default pane position: `bottom` (compact mode)
+- [x] Interactive keyboard shortcuts in monitor pane
   - `Shift+Arrow`: Move pane position (top/bottom/left/right)
   - `Tab`: Toggle compact/detailed mode (ignored in top/bottom)
   - `q`: Exit (moved from bash wrapper to Bun process)
-- [ ] Migrate keyboard handling from bash wrapper to Bun process
+- [x] Migrate keyboard handling from bash wrapper to Bun process
 
 ## TUI Enhancement & Auto-update
 

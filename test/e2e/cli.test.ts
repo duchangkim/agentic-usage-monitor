@@ -121,3 +121,47 @@ describe("Credential Source Selection (--source)", () => {
 		expect(result.stdout + result.stderr).toMatch(/invalid|unknown|source/i)
 	})
 })
+
+describe("Subcommands", () => {
+	let mockServer: MockServerHandle
+	let context: TestContext
+
+	beforeAll(async () => {
+		mockServer = await startMockServer({ scenario: "healthy" })
+		context = await createTestContext({ mockServer, scenario: "healthy" })
+	})
+
+	afterAll(async () => {
+		await mockServer.stop()
+	})
+
+	it("should show update subcommand in help", async () => {
+		const result = await runCli(["--help"], context)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("update")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("should show uninstall subcommand in help", async () => {
+		const result = await runCli(["--help"], context)
+
+		const assertions = assertCli(result).exitSuccess().stdoutContains("uninstall")
+
+		expect(assertions.allPassed()).toBe(true)
+	})
+
+	it("update subcommand should detect non-binary install", async () => {
+		const result = await runCli(["update"], context)
+
+		// When running via bun (not binary), it should suggest using package manager
+		expect(result.stdout).toContain("bun")
+	})
+
+	it("uninstall subcommand should detect non-binary install", async () => {
+		const result = await runCli(["uninstall"], context)
+
+		// When running via bun (not binary), it should suggest using package manager
+		expect(result.stdout).toContain("bun")
+	})
+})

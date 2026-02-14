@@ -156,13 +156,11 @@ Developers using Anthropic's official Claude Code CLI.
 - Shows full widget with box drawing, profile info, progress bars, reset times
 - ~20% of terminal width
 
-### 6.4 Launcher Scripts
+### 6.4 Launch Subcommand
 
 **Goal**: One-command startup with monitor pre-configured.
 
-**Scripts**:
-
-- `with-monitor`: Generic tmux launcher for any command (e.g., `with-monitor -- opencode`)
+**Command**: `usage-monitor launch` — built-in tmux launcher (e.g., `usage-monitor launch -- opencode`)
 
 **Required Capabilities**:
 
@@ -332,10 +330,10 @@ INSTALL_DIR=/usr/local/bin curl -fsSL ... | sh
 
 ### 9.3 Launch Subcommand
 
-The `usage-monitor launch` subcommand replaces the deprecated `bin/with-monitor` bash script:
+The `usage-monitor launch` subcommand is the built-in tmux launcher:
 
 ```bash
-usage-monitor launch -- opencode           # Monitor on right (default)
+usage-monitor launch -- opencode           # Monitor on bottom (default)
 usage-monitor launch -t -- opencode        # Monitor on top
 usage-monitor launch -b -- opencode        # Monitor on bottom
 usage-monitor launch -s myproject -- nvim  # Named session

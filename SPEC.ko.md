@@ -156,13 +156,11 @@ Anthropic의 공식 Claude Code CLI를 사용하는 개발자.
 - 박스 드로잉, 프로필 정보, 프로그레스 바, 리셋 시간이 포함된 전체 위젯 표시
 - 터미널 너비의 ~20%
 
-### 6.4 런처 스크립트
+### 6.4 Launch 서브커맨드
 
 **목표**: 모니터가 미리 설정된 상태로 한 줄 명령으로 시작.
 
-**스크립트**:
-
-- `with-monitor`: 모든 명령에 대한 범용 tmux 런처 (예: `with-monitor -- opencode`)
+**명령어**: `usage-monitor launch` — 내장 tmux 런처 (예: `usage-monitor launch -- opencode`)
 
 **필수 기능**:
 
@@ -332,10 +330,10 @@ INSTALL_DIR=/usr/local/bin curl -fsSL ... | sh
 
 ### 9.3 Launch 서브커맨드
 
-`usage-monitor launch` 서브커맨드는 더 이상 사용되지 않는 `bin/with-monitor` bash 스크립트를 대체합니다:
+`usage-monitor launch` 서브커맨드는 내장 tmux 런처입니다:
 
 ```bash
-usage-monitor launch -- opencode           # 모니터 오른쪽 (기본값)
+usage-monitor launch -- opencode           # 모니터 하단 (기본값)
 usage-monitor launch -t -- opencode        # 모니터 상단
 usage-monitor launch -b -- opencode        # 모니터 하단
 usage-monitor launch -s myproject -- nvim  # 이름 지정 세션

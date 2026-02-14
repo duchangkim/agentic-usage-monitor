@@ -5,7 +5,7 @@
 
 ## Project Overview
 
-Real-time Claude rate limit monitoring tool that runs alongside OpenCode using tmux.
+Real-time Claude rate limit monitoring tool that runs alongside Claude Code using tmux.
 
 **Package Name**: `agentic-usage-monitor`  
 **CLI Command**: `usage-monitor`
@@ -81,7 +81,9 @@ agentic-usage-monitor/
 ├── src/
 │   ├── cli/
 │   │   ├── index.ts          # Standalone CLI entry point
-│   │   └── launch.ts         # tmux launcher (TS port of bin/with-monitor)
+│   │   ├── launch.ts         # tmux launcher
+│   │   ├── update.ts         # Self-update command
+│   │   └── uninstall.ts      # Self-uninstall command
 │   ├── config/
 │   │   ├── index.ts          # Config exports
 │   │   ├── loader.ts         # YAML config loader
@@ -98,9 +100,6 @@ agentic-usage-monitor/
 │       ├── renderer.ts       # Box drawing, text rendering
 │       ├── progress.ts       # Progress bar component
 │       └── styles.ts         # ANSI styles
-├── bin/
-│   ├── with-monitor          # Generic tmux launcher (deprecated)
-│   └── setup                 # Auto-install script
 ├── test/
 │   ├── e2e/                  # E2E test scenarios
 │   ├── fixtures/             # Mock data
