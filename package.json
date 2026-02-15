@@ -1,6 +1,6 @@
 {
 	"name": "agentic-usage-monitor",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"description": "Real-time Claude rate limit monitoring tool for AI coding agents",
 	"type": "module",
 	"bin": {

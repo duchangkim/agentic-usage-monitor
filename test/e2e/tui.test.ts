@@ -301,7 +301,8 @@ describe("TUI Rendering - Color System", () => {
 			scenario: "healthy",
 			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
 		})
-		const defaultResult = await runCli(["--once"], defaultCtx)
+		// Explicit --theme default to avoid interference from user's config.json
+		const defaultResult = await runCli(["--once", "--theme", "default"], defaultCtx)
 
 		const nordCtx = await createTestContext({
 			mockServer,
@@ -315,8 +316,9 @@ describe("TUI Rendering - Color System", () => {
 		// Both should have RGB codes
 		expect(defaultResult.stdout).toMatch(RGB_PATTERN)
 		expect(nordResult.stdout).toMatch(RGB_PATTERN)
-		// Nord uses different RGB values, so output should differ
-		expect(nordResult.stdout).not.toBe(defaultResult.stdout)
+		// Default green=#22C55E (34,197,94), Nord green=#A3BE8C (163,190,140)
+		expect(defaultResult.stdout).toContain("38;2;34;197;94")
+		expect(nordResult.stdout).toContain("38;2;163;190;140")
 	})
 
 	it("--theme with invalid name should show error", async () => {
