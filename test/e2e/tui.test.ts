@@ -240,3 +240,58 @@ describe("TUI Rendering - Different Scenarios", () => {
 		}
 	})
 })
+
+describe("TUI Rendering - Color System", () => {
+	const ESC = String.fromCharCode(27)
+	const ANSI_PATTERN = new RegExp(ESC + "\\[")
+	const RGB_PATTERN = new RegExp(ESC + "\\[38;2;\\d{1,3};\\d{1,3};\\d{1,3}m")
+
+	let mockServer: MockServerHandle
+
+	beforeAll(async () => {
+		mockServer = await startMockServer({ scenario: "healthy" })
+	})
+
+	afterAll(async () => {
+		await mockServer.stop()
+	})
+
+	it("should contain ANSI escape codes when colors enabled", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			env: { NO_COLOR: undefined },
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(ANSI_PATTERN)
+	})
+
+	it("should produce RGB escape codes when COLORTERM=truecolor", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			env: {
+				NO_COLOR: undefined,
+				COLORTERM: "truecolor",
+			},
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(RGB_PATTERN)
+	})
+
+	it("should not contain ANSI escape codes when NO_COLOR=1", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			env: { NO_COLOR: "1" },
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).not.toMatch(ANSI_PATTERN)
+	})
+})

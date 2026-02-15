@@ -29,3 +29,11 @@ export {
 	type ProfileData,
 	type UsageData,
 } from "./widget"
+export {
+	type Theme,
+	type ThemeColors,
+	type ColorLevel,
+	getTheme,
+	setTheme,
+	initTheme,
+} from "./theme"

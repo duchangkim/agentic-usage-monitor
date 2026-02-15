@@ -1,6 +1,7 @@
 import { colorByPercentage, formatTimeRemaining } from "./progress"
 import { boxBottom, boxDivider, boxRow, boxTop, stripAnsi, text } from "./renderer"
-import { ANSI, type BoxStyle } from "./styles"
+import type { BoxStyle } from "./styles"
+import { getTheme } from "./theme"
 
 export interface WidgetConfig {
 	title: string
@@ -31,8 +32,9 @@ function createProgressBar(percentage: number, barWidth: number): string {
 	const emptyCount = barWidth - filledCount
 	const color = colorByPercentage(percentage)
 
+	const { colors } = getTheme()
 	const filled = text("━".repeat(filledCount), color)
-	const empty = text("░".repeat(emptyCount), ANSI.dim)
+	const empty = text("░".repeat(emptyCount), colors.progress.empty)
 	return filled + empty
 }
 
@@ -53,11 +55,12 @@ function renderRateLimitRow(
 	const innerWidth = totalWidth - 4
 	const barWidth = calculateBarWidth(innerWidth, compact)
 
+	const { colors } = getTheme()
 	const bar = createProgressBar(data.utilization, barWidth)
 	const pct = `${Math.round(data.utilization)}%`.padStart(4)
 	const resetText = formatTimeRemaining(data.resetsAt)
 	const resetMaxLen = compact ? 6 : 10
-	const reset = text(`(${resetText.slice(0, resetMaxLen)})`, ANSI.dim)
+	const reset = text(`(${resetText.slice(0, resetMaxLen)})`, colors.fg.subtle)
 
 	return `${label}${bar} ${pct} ${reset}`
 }
@@ -70,6 +73,7 @@ export function renderUsageWidget(
 	error: string | null,
 ): string[] {
 	const { title, width, boxStyle = "rounded", compact = false } = config
+	const { colors } = getTheme()
 	const lines: string[] = []
 
 	lines.push(boxTop(width, title, { boxStyle }))
@@ -81,7 +85,7 @@ export function renderUsageWidget(
 				? `${profile.displayName.slice(0, maxNameLen - 1)}…`
 				: profile.displayName
 
-		lines.push(boxRow(`${text("User:", ANSI.dim)} ${name}`, width, { boxStyle }))
+		lines.push(boxRow(`${text("User:", colors.fg.subtle)} ${name}`, width, { boxStyle }))
 
 		if (profile.organization && !compact) {
 			const maxOrgLen = width - 12
@@ -89,17 +93,17 @@ export function renderUsageWidget(
 				profile.organization.length > maxOrgLen
 					? `${profile.organization.slice(0, maxOrgLen - 1)}…`
 					: profile.organization
-			lines.push(boxRow(`${text("Org:", ANSI.dim)}  ${org}`, width, { boxStyle }))
+			lines.push(boxRow(`${text("Org:", colors.fg.subtle)}  ${org}`, width, { boxStyle }))
 		}
 
 		if (profile.planBadge) {
 			const badgeColors = {
-				ENT: ANSI.fg.cyan,
-				MAX: ANSI.fg.magenta,
-				PRO: ANSI.fg.green,
+				ENT: colors.badge.ent,
+				MAX: colors.badge.max,
+				PRO: colors.badge.pro,
 			} as const
 			const badge = text(` ${profile.planBadge}`, badgeColors[profile.planBadge])
-			lines.push(boxRow(`${text("Plan:", ANSI.dim)}${badge}`, width, { boxStyle }))
+			lines.push(boxRow(`${text("Plan:", colors.fg.subtle)}${badge}`, width, { boxStyle }))
 		}
 
 		lines.push(boxDivider(width, { boxStyle }))
@@ -107,9 +111,9 @@ export function renderUsageWidget(
 
 	if (!usage) {
 		if (error) {
-			lines.push(boxRow(text(error, ANSI.fg.red), width, { boxStyle }))
+			lines.push(boxRow(text(error, colors.status.danger), width, { boxStyle }))
 		} else {
-			lines.push(boxRow(text("Loading...", ANSI.dim), width, { boxStyle }))
+			lines.push(boxRow(text("Loading...", colors.fg.subtle), width, { boxStyle }))
 		}
 	} else {
 		const label5h = compact ? "5h: " : "5-Hour: "
@@ -137,14 +141,16 @@ export function renderUsageWidget(
 		}
 
 		if (!usage.fiveHour && !usage.sevenDay) {
-			lines.push(boxRow(text("No limits", ANSI.fg.green), width, { boxStyle }))
+			lines.push(boxRow(text("No limits", colors.status.success), width, { boxStyle }))
 		}
 	}
 
 	if (lastFetch) {
 		lines.push(boxDivider(width, { boxStyle }))
 		lines.push(
-			boxRow(text(`Updated: ${lastFetch.toLocaleTimeString()}`, ANSI.dim), width, { boxStyle }),
+			boxRow(text(`Updated: ${lastFetch.toLocaleTimeString()}`, colors.fg.subtle), width, {
+				boxStyle,
+			}),
 		)
 	}
 
@@ -159,7 +165,10 @@ export function renderStatusBar(
 	refreshInterval: number,
 	maxWidth: number,
 ): string {
-	const status = isRunning ? text("● Running", ANSI.fg.green) : text("○ Stopped", ANSI.dim)
+	const { colors } = getTheme()
+	const status = isRunning
+		? text("● Running", colors.status.success)
+		: text("○ Stopped", colors.fg.subtle)
 	const interval = `Refresh: ${refreshInterval}s`
 
 	if (!lastError) {
@@ -171,14 +180,15 @@ export function renderStatusBar(
 	const error =
 		lastError.length > maxErrorLen ? `${lastError.slice(0, maxErrorLen - 1)}…` : lastError
 
-	return `${status} | ${interval} | ${text(`Error: ${error}`, ANSI.fg.red)}`
+	return `${status} | ${interval} | ${text(`Error: ${error}`, colors.status.danger)}`
 }
 
 function createMiniProgressBar(percentage: number, barWidth: number): string {
 	const filledCount = Math.round((percentage / 100) * barWidth)
 	const emptyCount = barWidth - filledCount
 	const color = colorByPercentage(percentage)
-	return text("━".repeat(filledCount), color) + text("░".repeat(emptyCount), ANSI.dim)
+	const { colors } = getTheme()
+	return text("━".repeat(filledCount), color) + text("░".repeat(emptyCount), colors.progress.empty)
 }
 
 function renderCompactRateLine(
@@ -186,14 +196,16 @@ function renderCompactRateLine(
 	data: RateLimitData | undefined,
 	maxWidth: number,
 ): string {
+	const { colors } = getTheme()
+
 	if (!data) {
-		return text(`${label}: --`, ANSI.dim)
+		return text(`${label}: --`, colors.fg.subtle)
 	}
 
 	const pct = Math.round(data.utilization)
 	const pctStr = `${String(pct).padStart(3)}%`
 	const resetStr = formatTimeRemaining(data.resetsAt)
-	const resetPart = text(`(${resetStr})`, ANSI.dim)
+	const resetPart = text(`(${resetStr})`, colors.fg.subtle)
 
 	const fixedWidth = label.length + 2 + 4 + 1 + resetStr.length + 2 + 1
 	const barWidth = Math.max(5, maxWidth - fixedWidth)
@@ -209,17 +221,18 @@ export function renderCompact3Lines(
 	maxWidth?: number,
 ): string[] {
 	const width = maxWidth ?? (process.stdout.columns || 80)
+	const { colors } = getTheme()
 
 	let line1: string
 	if (error) {
-		line1 = text(`Error: ${error.slice(0, width - 8)}`, ANSI.fg.red)
+		line1 = text(`Error: ${error.slice(0, width - 8)}`, colors.status.danger)
 	} else if (profile) {
 		const badgePart = profile.planBadge
 			? (() => {
 					const badgeColors = {
-						ENT: ANSI.fg.cyan,
-						MAX: ANSI.fg.magenta,
-						PRO: ANSI.fg.green,
+						ENT: colors.badge.ent,
+						MAX: colors.badge.max,
+						PRO: colors.badge.pro,
 					} as const
 					return ` ${text(profile.planBadge, badgeColors[profile.planBadge])}`
 				})()
@@ -231,7 +244,7 @@ export function renderCompact3Lines(
 				: profile.displayName
 		line1 = `${name}${badgePart}`
 	} else {
-		line1 = text("Loading...", ANSI.dim)
+		line1 = text("Loading...", colors.fg.subtle)
 	}
 
 	const line2 = renderCompactRateLine("5h", usage?.fiveHour, width)

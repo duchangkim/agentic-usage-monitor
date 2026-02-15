@@ -1,4 +1,5 @@
 import { ANSI, type BoxStyle, getBoxChars } from "./styles"
+import { getTheme } from "./theme"
 
 export interface RenderOptions {
 	width: number
@@ -16,7 +17,9 @@ const DEFAULT_OPTIONS: RenderOptions = {
 
 export function text(content: string, ...styles: string[]): string {
 	if (styles.length === 0) return content
-	return styles.join("") + content + ANSI.reset
+	const effective = styles.filter((s) => s.length > 0)
+	if (effective.length === 0) return content
+	return effective.join("") + content + ANSI.reset
 }
 
 export function pad(
@@ -89,7 +92,7 @@ export function boxTop(width: number, title: string, opts: Partial<RenderOptions
 		return (
 			box.topLeft +
 			horizontalLine(leftLine, box.horizontal) +
-			text(titleText, ANSI.bold) +
+			text(titleText, getTheme().colors.box.title) +
 			horizontalLine(rightLine, box.horizontal) +
 			box.topRight
 		)

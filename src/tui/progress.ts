@@ -1,5 +1,5 @@
 import { text } from "./renderer"
-import { ANSI } from "./styles"
+import { getTheme } from "./theme"
 
 export interface ProgressBarOptions {
 	width: number
@@ -13,16 +13,19 @@ export interface ProgressBarOptions {
 	percentageColor: string
 }
 
-const DEFAULT_OPTIONS: ProgressBarOptions = {
-	width: 20,
-	filledChar: "━",
-	emptyChar: "░",
-	showPercentage: true,
-	showLabel: true,
-	labelWidth: 12,
-	filledColor: ANSI.fg.cyan,
-	emptyColor: ANSI.dim,
-	percentageColor: ANSI.fg.white,
+function getDefaultOptions(): ProgressBarOptions {
+	const { colors } = getTheme()
+	return {
+		width: 20,
+		filledChar: "━",
+		emptyChar: "░",
+		showPercentage: true,
+		showLabel: true,
+		labelWidth: 12,
+		filledColor: colors.status.info,
+		emptyColor: colors.progress.empty,
+		percentageColor: colors.fg.default,
+	}
 }
 
 export function progressBar(
@@ -31,7 +34,7 @@ export function progressBar(
 	label = "",
 	opts: Partial<ProgressBarOptions> = {},
 ): string {
-	const options = { ...DEFAULT_OPTIONS, ...opts }
+	const options = { ...getDefaultOptions(), ...opts }
 	const percentage = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
 	const filledCount = Math.round((percentage / 100) * options.width)
 	const emptyCount = options.width - filledCount
@@ -58,10 +61,11 @@ export function progressBar(
 }
 
 export function colorByPercentage(percentage: number): string {
-	if (percentage >= 90) return ANSI.fg.red
-	if (percentage >= 70) return ANSI.fg.yellow
-	if (percentage >= 50) return ANSI.fg.cyan
-	return ANSI.fg.green
+	const { progress } = getTheme().colors
+	if (percentage >= 90) return progress.critical
+	if (percentage >= 70) return progress.high
+	if (percentage >= 50) return progress.medium
+	return progress.low
 }
 
 export function progressBarWithThreshold(
@@ -128,7 +132,7 @@ export function renderUsageLimit(limit: UsageLimitDisplay, width: number): strin
 
 	const pctStr = `${Math.round(percentage)}%`.padStart(4)
 	const resetStr = limit.resetTime
-		? text(`(${formatTimeRemaining(limit.resetTime)})`, ANSI.dim)
+		? text(`(${formatTimeRemaining(limit.resetTime)})`, getTheme().colors.fg.subtle)
 		: ""
 
 	return `${limit.label.padEnd(10)} ${bar} ${pctStr} ${resetStr}`

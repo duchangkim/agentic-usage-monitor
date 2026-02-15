@@ -19,6 +19,7 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
 		"test": "bun test",
+		"test:unit": "bun test test/unit",
 		"test:e2e": "bun test test/e2e",
 		"test:e2e:binary": "bun test test/binary-e2e",
 		"test:e2e:docker": "docker compose run --rm e2e",

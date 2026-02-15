@@ -8,7 +8,7 @@ export interface TestContext {
 	termHeight: number
 	timeout: number
 	credentialsPath?: string
-	env?: Record<string, string>
+	env?: Record<string, string | undefined>
 }
 
 export interface TestResult {
@@ -33,20 +33,31 @@ export async function createTestContext(options: Partial<TestContext> = {}): Pro
 		termWidth: options.termWidth ?? 80,
 		termHeight: options.termHeight ?? 24,
 		timeout: options.timeout ?? 10000,
+		env: options.env,
 	}
 }
 
 export async function runCli(args: string[], context: TestContext): Promise<TestResult> {
 	const start = Date.now()
 
-	const env: Record<string, string> = {
+	const env: Record<string, string | undefined> = {
 		...process.env,
 		COLUMNS: String(context.termWidth),
 		LINES: String(context.termHeight),
 		TEST_CREDENTIALS_PATH: context.credentialsPath ?? TEST_CREDENTIALS_PATH,
 		TERM: "xterm-256color",
 		NO_COLOR: "1",
-		...context.env,
+	}
+
+	// Apply context.env overrides (undefined values delete the key)
+	if (context.env) {
+		for (const [key, value] of Object.entries(context.env)) {
+			if (value === undefined) {
+				delete env[key]
+			} else {
+				env[key] = value
+			}
+		}
 	}
 
 	if (context.mockServer) {

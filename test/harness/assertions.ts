@@ -148,7 +148,8 @@ export class CliAssertions {
 	}
 
 	hasProgressBar(): this {
-		const hasBar = this.result.stdout.includes("━") || this.result.stdout.includes("░")
+		const progressChars = ["━", "░", "█", "▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+		const hasBar = progressChars.some((char) => this.result.stdout.includes(char))
 		this.assertions.push({
 			name: "has_progress_bar",
 			pass: hasBar,
