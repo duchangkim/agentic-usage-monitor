@@ -36,4 +36,6 @@ export {
 	getTheme,
 	setTheme,
 	initTheme,
+	getPreset,
+	getPresetNames,
 } from "./theme"

@@ -25,6 +25,8 @@ describe("CLI Argument Parsing", () => {
 			.stdoutContains("OPTIONS:")
 			.stdoutContains("--once")
 			.stdoutContains("--help")
+			.stdoutContains("--theme")
+			.stdoutContains("config.json")
 			.performance(2000)
 
 		expect(assertions.allPassed()).toBe(true)

@@ -15,10 +15,14 @@ export const WidgetConfigSchema = z.object({
 	compact: z.boolean().optional(),
 })
 
+export const VALID_THEMES = ["default", "nord"] as const
+export type ThemeName = (typeof VALID_THEMES)[number]
+
 export const ConfigSchema = z.object({
 	oauth: OAuthConfigSchema.optional(),
 	display: DisplayConfigSchema.optional(),
 	widget: WidgetConfigSchema.optional(),
+	theme: z.enum(VALID_THEMES).optional(),
 })
 
 export type OAuthConfig = z.infer<typeof OAuthConfigSchema>
@@ -39,6 +43,7 @@ export interface ResolvedConfig {
 		position: "left" | "right" | "top" | "bottom"
 		compact: boolean
 	}
+	theme: ThemeName
 }
 
 export function getDefaultConfig(): ResolvedConfig {
@@ -55,6 +60,7 @@ export function getDefaultConfig(): ResolvedConfig {
 			position: "bottom",
 			compact: false,
 		},
+		theme: "default",
 	}
 }
 
@@ -74,6 +80,7 @@ export function resolveConfig(partial: Config): ResolvedConfig {
 			position: partial.widget?.position ?? defaults.widget.position,
 			compact: partial.widget?.compact ?? defaults.widget.compact,
 		},
+		theme: partial.theme ?? defaults.theme,
 	}
 }
 

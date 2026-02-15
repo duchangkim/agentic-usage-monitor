@@ -294,4 +294,39 @@ describe("TUI Rendering - Color System", () => {
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).not.toMatch(ANSI_PATTERN)
 	})
+
+	it("--theme nord should produce different RGB values than default", async () => {
+		const defaultCtx = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+		const defaultResult = await runCli(["--once"], defaultCtx)
+
+		const nordCtx = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+		const nordResult = await runCli(["--once", "--theme", "nord"], nordCtx)
+
+		expect(defaultResult.exitCode).toBe(0)
+		expect(nordResult.exitCode).toBe(0)
+		// Both should have RGB codes
+		expect(defaultResult.stdout).toMatch(RGB_PATTERN)
+		expect(nordResult.stdout).toMatch(RGB_PATTERN)
+		// Nord uses different RGB values, so output should differ
+		expect(nordResult.stdout).not.toBe(defaultResult.stdout)
+	})
+
+	it("--theme with invalid name should show error", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+		})
+		const result = await runCli(["--once", "--theme", "nonexistent"], context)
+
+		expect(result.exitCode).toBe(1)
+		expect(result.stderr).toContain("Invalid theme")
+	})
 })

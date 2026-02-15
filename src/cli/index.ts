@@ -8,12 +8,12 @@ const VERSION =
 		: (process.env.npm_package_version ?? "dev")
 
 import { execSync } from "node:child_process"
-import { loadConfig } from "../config"
+import { VALID_THEMES, loadConfig } from "../config"
 import { getAgent, getAgentNames, loadAgentConfig, resolveAgentConfig } from "../config/agents"
 import { type CredentialSource, VALID_CREDENTIAL_SOURCES } from "../data/oauth-credentials"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
 import { text } from "../tui/renderer"
-import { ANSI } from "../tui/styles"
+import { getPresetNames, getTheme, initTheme } from "../tui/theme"
 import {
 	type ProfileData,
 	type UsageData,
@@ -36,6 +36,7 @@ interface CliArgs {
 	compact: boolean
 	config?: string
 	source?: CredentialSource
+	theme?: string
 	help: boolean
 	version: boolean
 }
@@ -70,6 +71,11 @@ function parseArgs(args: string[]): CliArgs {
 				if (nextArg) result.source = nextArg as CredentialSource
 				break
 			}
+			case "--theme": {
+				const nextArg = args[++i]
+				if (nextArg) result.theme = nextArg
+				break
+			}
 			case "--help":
 			case "-h":
 				result.help = true
@@ -90,52 +96,52 @@ function parseArgs(args: string[]): CliArgs {
 }
 
 function printHelp(): void {
+	const { colors } = getTheme()
 	console.log(`
-${text("usage-monitor", ANSI.bold)} - Monitor Claude rate limits
+${text("usage-monitor", colors.box.title)} - Monitor Claude rate limits
 
-${text("USAGE:", ANSI.fg.yellow)}
+${text("USAGE:", colors.fg.heading)}
   usage-monitor [OPTIONS]
   usage-monitor <agent>               Run agent with usage monitor in tmux
   usage-monitor launch [OPTIONS] -- COMMAND
 
-${text("AGENTS:", ANSI.fg.yellow)}
+${text("AGENTS:", colors.fg.heading)}
   claude              Launch Claude Code with claude-code credentials
   opencode            Launch OpenCode with opencode credentials
   (Custom agents can be defined in ~/.config/usage-monitor/agents.json)
 
-${text("SUBCOMMANDS:", ANSI.fg.yellow)}
+${text("SUBCOMMANDS:", colors.fg.heading)}
   launch              Run a command with usage monitor in a tmux pane
                       Use 'usage-monitor launch --help' for details
   update              Self-update to the latest version (binary install only)
   uninstall           Remove usage-monitor from your system (binary install only)
 
-${text("OPTIONS:", ANSI.fg.yellow)}
+${text("OPTIONS:", colors.fg.heading)}
   -1, --once        Show usage once and exit (no auto-refresh)
   --compact         Minimal display mode (for small panes)
+  --theme NAME      Color theme: ${getPresetNames().join(", ")}
   -s, --source      Credential source: auto, claude-code, opencode
                     (default: auto — tries all sources)
   -c, --config      Path to config file
   -h, --help        Show this help message
   -v, --version     Show version
 
-${text("AUTHENTICATION:", ANSI.fg.yellow)}
+${text("AUTHENTICATION:", colors.fg.heading)}
   Credentials are loaded automatically from (in priority order):
     1. Claude Code (macOS Keychain / ~/.claude/.credentials.json)
     2. OpenCode (~/.local/share/opencode/auth.json)
   Use --source to select a specific credential source.
 
-${text("CONFIGURATION:", ANSI.fg.yellow)}
-  Config file locations (in order of priority):
-    1. ~/.config/usage-monitor/config.yaml
-    2. ~/.usage-monitor.yaml
-    3. ./.usage-monitor.yaml
+${text("CONFIGURATION:", colors.fg.heading)}
+  Config file: ~/.config/usage-monitor/config.json
 
-${text("ENVIRONMENT VARIABLES:", ANSI.fg.yellow)}
+${text("ENVIRONMENT VARIABLES:", colors.fg.heading)}
   USAGE_MONITOR_REFRESH_INTERVAL   Refresh interval in seconds
 
-${text("EXAMPLES:", ANSI.fg.yellow)}
+${text("EXAMPLES:", colors.fg.heading)}
   usage-monitor                    Show rate limits (auto-refresh)
   usage-monitor --once             One-shot display
+  usage-monitor --theme nord       Use Nord color theme
   usage-monitor --compact          Minimal mode for small panes
   usage-monitor launch -- opencode Run with monitor in tmux
 `)
@@ -265,7 +271,8 @@ async function main(): Promise<void> {
 		// If it's not a known subcommand/flag, show error with available agents
 		if (firstArg !== "launch") {
 			const agentNames = getAgentNames(agents)
-			console.error(text(`Unknown agent: "${firstArg}"`, ANSI.fg.red))
+			const { colors } = getTheme()
+			console.error(text(`Unknown agent: "${firstArg}"`, colors.status.danger))
 			console.error("")
 			console.error(`Available agents: ${agentNames.join(", ")}`)
 			console.error("")
@@ -288,10 +295,23 @@ async function main(): Promise<void> {
 
 	// Validate --source flag
 	if (args.source && !VALID_CREDENTIAL_SOURCES.includes(args.source)) {
+		const { colors } = getTheme()
 		console.error(
 			text(
 				`Invalid source: "${args.source}". Valid sources: ${VALID_CREDENTIAL_SOURCES.join(", ")}`,
-				ANSI.fg.red,
+				colors.status.danger,
+			),
+		)
+		process.exit(1)
+	}
+
+	// Validate --theme flag
+	if (args.theme && !VALID_THEMES.includes(args.theme as (typeof VALID_THEMES)[number])) {
+		const { colors } = getTheme()
+		console.error(
+			text(
+				`Invalid theme: "${args.theme}". Available themes: ${getPresetNames().join(", ")}`,
+				colors.status.danger,
 			),
 		)
 		process.exit(1)
@@ -300,15 +320,21 @@ async function main(): Promise<void> {
 	const configResult = loadConfig(args.config)
 
 	if (configResult.warnings.length > 0) {
+		const { colors } = getTheme()
 		for (const warning of configResult.warnings) {
-			console.error(text(`Warning: ${warning}`, ANSI.fg.yellow))
+			console.error(text(`Warning: ${warning}`, colors.status.warning))
 		}
 	}
 
 	const config = configResult.config
 
+	// Initialize theme: CLI flag overrides config
+	const themeName = args.theme ?? config.theme
+	initTheme(process.env, themeName)
+
 	if (!config.oauth.enabled) {
-		console.log(text("OAuth is disabled in configuration.", ANSI.fg.yellow))
+		const { colors } = getTheme()
+		console.log(text("OAuth is disabled in configuration.", colors.status.warning))
 		process.exit(0)
 	}
 
@@ -330,8 +356,9 @@ async function main(): Promise<void> {
 			const output = renderRateLimitsWidget(state, width, false).join("\n")
 			console.log(output)
 			if (state.lastError) {
+				const { colors } = getTheme()
 				console.log("")
-				console.log(text("Please authenticate via Claude Code or OpenCode.", ANSI.fg.yellow))
+				console.log(text("Please authenticate via Claude Code or OpenCode.", colors.status.warning))
 			}
 		}
 		process.exit(0)
@@ -348,6 +375,7 @@ async function main(): Promise<void> {
 			const lines = renderCompact3Lines(stateToProfile(state), stateToUsage(state), state.lastError)
 			process.stdout.write(`\x1B[H${lines[0]}\x1B[K\n${lines[1]}\x1B[K\n${lines[2]}\x1B[K`)
 		} else {
+			const { colors } = getTheme()
 			clearScreen()
 			console.log(renderRateLimitsWidget(state, width, false).join("\n"))
 			console.log("")
@@ -355,7 +383,7 @@ async function main(): Promise<void> {
 				renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
 			)
 			console.log("")
-			console.log(text("Press q to exit", ANSI.dim))
+			console.log(text("Press q to exit", colors.fg.subtle))
 		}
 	}
 
@@ -468,6 +496,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-	console.error(text(`Error: ${error}`, ANSI.fg.red))
+	const { colors } = getTheme()
+	console.error(text(`Error: ${error}`, colors.status.danger))
 	process.exit(1)
 })
