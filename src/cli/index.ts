@@ -8,7 +8,7 @@ const VERSION =
 		: (process.env.npm_package_version ?? "dev")
 
 import { execSync } from "node:child_process"
-import { VALID_THEMES, loadConfig } from "../config"
+import { VALID_THEMES, getDefaultConfigPath, loadConfig } from "../config"
 import { getAgent, getAgentNames, loadAgentConfig, resolveAgentConfig } from "../config/agents"
 import { type CredentialSource, VALID_CREDENTIAL_SOURCES } from "../data/oauth-credentials"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
@@ -21,6 +21,7 @@ import {
 	renderStatusBar,
 	renderUsageWidget,
 } from "../tui/widget"
+import { openConfigInEditor, reloadAndApplyConfig } from "./config-editor"
 import { type PaneMoveDirection, moveMonitorPane } from "./pane-manager"
 
 const MIN_WIDTH = 28
@@ -137,6 +138,13 @@ ${text("CONFIGURATION:", colors.fg.heading)}
 
 ${text("ENVIRONMENT VARIABLES:", colors.fg.heading)}
   USAGE_MONITOR_REFRESH_INTERVAL   Refresh interval in seconds
+
+${text("KEYBOARD SHORTCUTS:", colors.fg.heading)}
+  q                 Quit
+  e                 Edit config (opens in system editor)
+  E (Shift+e)       Apply config changes
+  Tab               Toggle compact/detailed mode
+  Shift+Arrow       Move monitor pane position (tmux)
 
 ${text("EXAMPLES:", colors.fg.heading)}
   usage-monitor                    Show rate limits (auto-refresh)
@@ -326,7 +334,8 @@ async function main(): Promise<void> {
 		}
 	}
 
-	const config = configResult.config
+	let config = configResult.config
+	const configPath = configResult.path ?? getDefaultConfigPath()
 
 	// Initialize theme: CLI flag overrides config
 	const themeName = args.theme ?? config.theme
@@ -383,7 +392,7 @@ async function main(): Promise<void> {
 				renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
 			)
 			console.log("")
-			console.log(text("Press q to exit", colors.fg.subtle))
+			console.log(text("q:exit  e:config  E:apply", colors.fg.subtle))
 		}
 	}
 
@@ -447,6 +456,24 @@ async function main(): Promise<void> {
 			// Ctrl+C
 			if (key === "\x03") {
 				killTmuxSession()
+				return
+			}
+
+			// e — open config in system editor
+			if (key === "e") {
+				openConfigInEditor(configPath)
+				return
+			}
+
+			// E (Shift+e) — reload and apply config
+			if (key === "E") {
+				const result = reloadAndApplyConfig(configPath)
+				if (result.success) {
+					config = result.config
+					compactMode = args.compact || config.widget.compact
+				}
+				clearScreen()
+				render()
 				return
 			}
 

@@ -27,6 +27,8 @@ describe("CLI Argument Parsing", () => {
 			.stdoutContains("--help")
 			.stdoutContains("--theme")
 			.stdoutContains("config.json")
+			.stdoutContains("KEYBOARD SHORTCUTS:")
+			.stdoutContains("e")
 			.performance(2000)
 
 		expect(assertions.allPassed()).toBe(true)
