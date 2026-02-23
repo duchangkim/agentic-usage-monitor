@@ -39,3 +39,14 @@ export {
 	getPreset,
 	getPresetNames,
 } from "./theme"
+export {
+	type CharacterState,
+	type CharacterPreset,
+	type CharacterRenderResult,
+	deriveCharacterState,
+	renderCharacter,
+	getCharacterHeight,
+	CharacterAnimator,
+	getCharacterPreset,
+	getCharacterPresetNames,
+} from "./character"

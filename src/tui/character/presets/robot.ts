@@ -1,0 +1,71 @@
+import type { CharacterPreset } from "../types"
+
+export const robotPreset: CharacterPreset = {
+	name: "robot",
+	width: 11,
+	height: 4,
+	states: {
+		relaxed: {
+			frames: [
+				["  ▗▟███▙▖  ", " ▐█ ◠ ◠ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+				["  ▗▟███▙▖  ", " ▐█ ─ ─ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+			],
+		},
+		normal: {
+			frames: [
+				["  ▗▟███▙▖  ", " ▐█ ◉ ◉ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+				["  ▗▟███▙▖  ", " ▐█ ─ ─ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+			],
+		},
+		concerned: {
+			frames: [
+				["  ▗▟███▙▖  ", " ▐█ ◑ ◑ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+				["  ▗▟███▙▖  ", " ▐█ ─ ─ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+			],
+		},
+		critical: {
+			frames: [
+				["  ▗▟███▙▖  ", " ▐█ ◎ ◎ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+				["  ▗▟███▙▖  ", " ▐█ ● ● █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+			],
+		},
+		rateLimit: {
+			frames: [
+				["  ▗▟███▙▖  ", " ▐█ — — █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+				["  ▗▟███▙▖  ", " ▐█ _ _ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+			],
+		},
+		error: {
+			frames: [
+				["  ▗▟███▙▖  ", " ▐█ ? ? █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+				["  ▗▟███▙▖  ", " ▐█ ─ ─ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
+			],
+		},
+	},
+	miniStates: {
+		relaxed: ["  ▗▟███▙▖  ", " ▐█ ◠ ◠ █▌ "],
+		normal: ["  ▗▟███▙▖  ", " ▐█ ◉ ◉ █▌ "],
+		concerned: ["  ▗▟███▙▖  ", " ▐█ ◑ ◑ █▌ "],
+		critical: ["  ▗▟███▙▖  ", " ▐█ ◎ ◎ █▌ "],
+		rateLimit: ["  ▗▟███▙▖  ", " ▐█ — — █▌ "],
+		error: ["  ▗▟███▙▖  ", " ▐█ ? ? █▌ "],
+	},
+	speechBubbles: {
+		en: {
+			relaxed: ["All good!", "Plenty of room", "Smooth sailing~"],
+			normal: ["Cruising along", "Steady pace", "Looking fine"],
+			concerned: ["Getting warm...", "Pace yourself", "Watch the meter"],
+			critical: ["Running hot!", "Slow down!", "Almost there..."],
+			rateLimit: ["Taking a break...", "zzZ", "Need to rest..."],
+			error: ["Hmm...?", "Can't reach API", "Check connection"],
+		},
+		ko: {
+			relaxed: ["여유 있어요~", "충분해요!", "순항 중~"],
+			normal: ["순조로워요", "잘 가고 있어요", "괜찮아요"],
+			concerned: ["슬슬 조심...", "속도 조절!", "주의하세요"],
+			critical: ["거의 다 찼어요!", "천천히!", "위험해요!"],
+			rateLimit: ["잠시 쉬어요...", "zzZ", "충전 중..."],
+			error: ["연결 확인 중...", "어라...?", "API 접속 불가"],
+		},
+	},
+}

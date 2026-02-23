@@ -71,12 +71,20 @@ export function renderUsageWidget(
 	usage: UsageData | null,
 	lastFetch: Date | null,
 	error: string | null,
+	characterLines?: string[],
 ): string[] {
 	const { title, width, boxStyle = "rounded", compact = false } = config
 	const { colors } = getTheme()
 	const lines: string[] = []
 
 	lines.push(boxTop(width, title, { boxStyle }))
+
+	if (characterLines && characterLines.length > 0) {
+		for (const charLine of characterLines) {
+			lines.push(boxRow(charLine, width, { boxStyle }))
+		}
+		lines.push(boxDivider(width, { boxStyle }))
+	}
 
 	if (profile) {
 		const maxNameLen = width - 12
@@ -219,13 +227,20 @@ export function renderCompact3Lines(
 	usage: UsageData | null,
 	error: string | null,
 	maxWidth?: number,
+	miniCharacterLines?: string[],
 ): string[] {
 	const width = maxWidth ?? (process.stdout.columns || 80)
 	const { colors } = getTheme()
 
+	// Horizontal layout: [mini char | data] when mini character is present
+	const MINI_GAP = 4
+	const hasMini = miniCharacterLines && miniCharacterLines.length >= 2
+	const leftColWidth = hasMini ? Math.max(...miniCharacterLines.map((l) => l.length)) + MINI_GAP : 0
+	const rightColWidth = width - leftColWidth
+
 	let line1: string
 	if (error) {
-		line1 = text(`Error: ${error.slice(0, width - 8)}`, colors.status.danger)
+		line1 = text(`Error: ${error.slice(0, rightColWidth - 8)}`, colors.status.danger)
 	} else if (profile) {
 		const badgePart = profile.planBadge
 			? (() => {
@@ -237,7 +252,7 @@ export function renderCompact3Lines(
 					return ` ${text(profile.planBadge, badgeColors[profile.planBadge])}`
 				})()
 			: ""
-		const maxNameLen = width - (profile.planBadge ? profile.planBadge.length + 2 : 0)
+		const maxNameLen = rightColWidth - (profile.planBadge ? profile.planBadge.length + 2 : 0)
 		const name =
 			profile.displayName.length > maxNameLen
 				? `${profile.displayName.slice(0, maxNameLen - 1)}…`
@@ -247,8 +262,16 @@ export function renderCompact3Lines(
 		line1 = text("Loading...", colors.fg.subtle)
 	}
 
-	const line2 = renderCompactRateLine("5h", usage?.fiveHour, width)
-	const line3 = renderCompactRateLine("7d", usage?.sevenDay, width)
+	const line2 = renderCompactRateLine("5h", usage?.fiveHour, rightColWidth)
+	const line3 = renderCompactRateLine("7d", usage?.sevenDay, rightColWidth)
 
+	const miniLine0 = miniCharacterLines?.[0]
+	const miniLine1 = miniCharacterLines?.[1]
+	if (miniLine0 && miniLine1) {
+		const pad = " ".repeat(leftColWidth)
+		const char0 = miniLine0.padEnd(leftColWidth)
+		const char1 = miniLine1.padEnd(leftColWidth)
+		return [pad + line1, char0 + line2, char1 + line3]
+	}
 	return [line1, line2, line3]
 }

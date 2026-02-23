@@ -98,7 +98,7 @@ describe("TUI Rendering - Compact Mode", () => {
 		await mockServer.stop()
 	})
 
-	it("should render exactly 3 lines in compact mode", async () => {
+	it("should render exactly 3 lines in compact mode (horizontal layout)", async () => {
 		const result = await runCli(["--once", "--compact"], context)
 
 		const assertions = assertCli(result).exitSuccess()
@@ -108,6 +108,7 @@ describe("TUI Rendering - Compact Mode", () => {
 			.trim()
 			.split("\n")
 			.filter((l: string) => l.trim() !== "")
+		// Horizontal: mini char left + data right = 3 lines
 		expect(lines.length).toBe(3)
 	})
 
@@ -330,5 +331,119 @@ describe("TUI Rendering - Color System", () => {
 
 		expect(result.exitCode).toBe(1)
 		expect(result.stderr).toContain("Invalid theme")
+	})
+})
+
+describe("TUI Rendering - Character System", () => {
+	let mockServer: MockServerHandle
+
+	beforeAll(async () => {
+		mockServer = await startMockServer({ scenario: "healthy" })
+	})
+
+	afterAll(async () => {
+		await mockServer.stop()
+	})
+
+	it("should render character ASCII art in default (non-compact) mode", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		// Robot character body parts
+		expect(result.stdout).toContain("▗▟███▙▖")
+		expect(result.stdout).toContain("▐█")
+		expect(result.stdout).toContain("▀█████▀")
+	})
+
+	it("should render speech bubble with character", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		// Speech bubble borders should be present
+		expect(result.stdout).toContain("┌")
+		expect(result.stdout).toContain("└─┬")
+	})
+
+	it("should render divider between character and usage data", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		// Should have a divider (├───┤) between character section and usage data
+		expect(result.stdout).toMatch(/├─+┤/)
+	})
+
+	it("should render mini character inline (horizontal) in compact mode", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+		})
+		const result = await runCli(["--once", "--compact"], context)
+
+		expect(result.exitCode).toBe(0)
+		// Compact mode should have mini character head inline with data
+		expect(result.stdout).toContain("▗▟███▙▖")
+		expect(result.stdout).toContain("▐█")
+		// But NOT the full body
+		expect(result.stdout).not.toContain("▀█████▀")
+		// Character and usage data should be on the same line
+		const lines = result.stdout.trim().split("\n")
+		const charLine = lines.find((l: string) => l.includes("▗▟███▙▖"))
+		expect(charLine).toContain("5h:")
+	})
+
+	it("should render character with different states based on usage", async () => {
+		// High usage scenario should show concerned/critical character
+		const server = await startMockServer({ scenario: "highUsage" })
+		const ctx = await createTestContext({
+			mockServer: server,
+			scenario: "highUsage",
+			termWidth: 52,
+		})
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			expect(result.exitCode).toBe(0)
+			// Should have character art
+			expect(result.stdout).toContain("▗▟███▙▖")
+			// Should still have usage data
+			expect(result.stdout).toContain("85%")
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should render character in error state when auth fails", async () => {
+		const server = await startMockServer({ scenario: "authError" })
+		const ctx = await createTestContext({
+			mockServer: server,
+			scenario: "authError",
+			termWidth: 52,
+		})
+
+		try {
+			const result = await runCli(["--once"], ctx)
+
+			expect(result.exitCode).toBe(0)
+			// Should still render character art even in error state
+			expect(result.stdout).toContain("▗▟███▙▖")
+		} finally {
+			await server.stop()
+		}
 	})
 })

@@ -12,6 +12,13 @@ import { VALID_THEMES, getDefaultConfigPath, loadConfig } from "../config"
 import { getAgent, getAgentNames, loadAgentConfig, resolveAgentConfig } from "../config/agents"
 import { type CredentialSource, VALID_CREDENTIAL_SOURCES } from "../data/oauth-credentials"
 import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
+import {
+	CharacterAnimator,
+	deriveCharacterState,
+	getCharacterPreset,
+	renderCharacter,
+	renderMiniCharacter,
+} from "../tui/character"
 import { text } from "../tui/renderer"
 import { getPresetNames, getTheme, initTheme } from "../tui/theme"
 import {
@@ -205,6 +212,7 @@ function renderRateLimitsWidget(
 	state: OAuthMonitorState,
 	width: number,
 	forceCompact: boolean,
+	characterLines?: string[],
 ): string[] {
 	const compact = forceCompact || width < 40
 	const title = compact ? "Rate Limits" : "Claude Rate Limits"
@@ -215,6 +223,7 @@ function renderRateLimitsWidget(
 		stateToUsage(state),
 		state.lastFetch,
 		state.lastError,
+		characterLines,
 	)
 }
 
@@ -351,18 +360,44 @@ async function main(): Promise<void> {
 
 	let compactMode = args.compact || config.widget.compact
 
+	const charPreset = getCharacterPreset(config.character.theme)
+
 	if (args.once) {
 		const width = getTerminalWidth()
 		await monitor.fetch()
 		const state = monitor.getState()
 
 		if (compactMode) {
-			const lines = renderCompact3Lines(stateToProfile(state), stateToUsage(state), state.lastError)
+			let miniLines: string[] | undefined
+			if (config.character.enabled && charPreset) {
+				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
+				miniLines = renderMiniCharacter(charPreset, charState) ?? undefined
+			}
+			const lines = renderCompact3Lines(
+				stateToProfile(state),
+				stateToUsage(state),
+				state.lastError,
+				width,
+				miniLines,
+			)
 			for (const line of lines) {
 				console.log(line)
 			}
 		} else {
-			const output = renderRateLimitsWidget(state, width, false).join("\n")
+			let characterLines: string[] | undefined
+			if (config.character.enabled && charPreset && !compactMode) {
+				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
+				const charResult = renderCharacter(
+					charPreset,
+					charState,
+					0,
+					width - 4,
+					config.character.language,
+					config.character.speechBubble,
+				)
+				characterLines = charResult.lines
+			}
+			const output = renderRateLimitsWidget(state, width, false, characterLines).join("\n")
 			console.log(output)
 			if (state.lastError) {
 				const { colors } = getTheme()
@@ -376,17 +411,45 @@ async function main(): Promise<void> {
 	hideCursor()
 	clearScreen()
 
+	let animator: CharacterAnimator | null = null
+
 	const render = (): void => {
 		const width = getTerminalWidth()
 		const state = monitor.getState()
 
 		if (compactMode) {
-			const lines = renderCompact3Lines(stateToProfile(state), stateToUsage(state), state.lastError)
-			process.stdout.write(`\x1B[H${lines[0]}\x1B[K\n${lines[1]}\x1B[K\n${lines[2]}\x1B[K`)
+			let miniLines: string[] | undefined
+			if (config.character.enabled && charPreset) {
+				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
+				miniLines = renderMiniCharacter(charPreset, charState) ?? undefined
+			}
+			const lines = renderCompact3Lines(
+				stateToProfile(state),
+				stateToUsage(state),
+				state.lastError,
+				width,
+				miniLines,
+			)
+			process.stdout.write(`\x1B[H${lines.map((l) => `${l}\x1B[K`).join("\n")}`)
 		} else {
+			let characterLines: string[] | undefined
+			if (config.character.enabled && charPreset && !compactMode) {
+				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
+				if (animator) animator.setState(charState)
+				const charResult = renderCharacter(
+					charPreset,
+					charState,
+					animator?.currentFrame ?? 0,
+					width - 4,
+					config.character.language,
+					config.character.speechBubble,
+				)
+				characterLines = charResult.lines
+			}
+
 			const { colors } = getTheme()
 			clearScreen()
-			console.log(renderRateLimitsWidget(state, width, false).join("\n"))
+			console.log(renderRateLimitsWidget(state, width, false, characterLines).join("\n"))
 			console.log("")
 			console.log(
 				renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
@@ -394,6 +457,11 @@ async function main(): Promise<void> {
 			console.log("")
 			console.log(text("q:exit  e:config  E:apply", colors.fg.subtle))
 		}
+	}
+
+	if (config.character.enabled && config.character.animation && charPreset) {
+		animator = new CharacterAnimator(charPreset, () => render())
+		animator.start()
 	}
 
 	monitor.on((event) => {
@@ -405,6 +473,7 @@ async function main(): Promise<void> {
 	const tmuxSession = process.env.USAGE_MONITOR_SESSION
 
 	const cleanup = (): void => {
+		animator?.stop()
 		monitor.stop()
 		if (process.stdin.isTTY) {
 			process.stdin.setRawMode(false)

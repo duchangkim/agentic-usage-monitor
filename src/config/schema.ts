@@ -15,6 +15,19 @@ export const WidgetConfigSchema = z.object({
 	compact: z.boolean().optional(),
 })
 
+export const VALID_CHARACTER_THEMES = ["robot"] as const
+export type CharacterThemeName = (typeof VALID_CHARACTER_THEMES)[number]
+
+export const CharacterConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	theme: z.enum(VALID_CHARACTER_THEMES).optional(),
+	animation: z.boolean().optional(),
+	speechBubble: z.boolean().optional(),
+	language: z.string().optional(),
+})
+
+export type CharacterConfig = z.infer<typeof CharacterConfigSchema>
+
 export const VALID_THEMES = ["default", "nord"] as const
 export type ThemeName = (typeof VALID_THEMES)[number]
 
@@ -23,6 +36,7 @@ export const ConfigSchema = z.object({
 	display: DisplayConfigSchema.optional(),
 	widget: WidgetConfigSchema.optional(),
 	theme: z.enum(VALID_THEMES).optional(),
+	character: CharacterConfigSchema.optional(),
 })
 
 export type OAuthConfig = z.infer<typeof OAuthConfigSchema>
@@ -44,6 +58,13 @@ export interface ResolvedConfig {
 		compact: boolean
 	}
 	theme: ThemeName
+	character: {
+		enabled: boolean
+		theme: CharacterThemeName
+		animation: boolean
+		speechBubble: boolean
+		language: string
+	}
 }
 
 export function getDefaultConfig(): ResolvedConfig {
@@ -61,6 +82,13 @@ export function getDefaultConfig(): ResolvedConfig {
 			compact: false,
 		},
 		theme: "default",
+		character: {
+			enabled: true,
+			theme: "robot",
+			animation: true,
+			speechBubble: true,
+			language: "en",
+		},
 	}
 }
 
@@ -81,6 +109,13 @@ export function resolveConfig(partial: Config): ResolvedConfig {
 			compact: partial.widget?.compact ?? defaults.widget.compact,
 		},
 		theme: partial.theme ?? defaults.theme,
+		character: {
+			enabled: partial.character?.enabled ?? defaults.character.enabled,
+			theme: partial.character?.theme ?? defaults.character.theme,
+			animation: partial.character?.animation ?? defaults.character.animation,
+			speechBubble: partial.character?.speechBubble ?? defaults.character.speechBubble,
+			language: partial.character?.language ?? defaults.character.language,
+		},
 	}
 }
 
