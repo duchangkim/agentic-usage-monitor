@@ -219,25 +219,38 @@ Characters change appearance based on the **highest** usage percentage across al
 
 #### Animation System
 
-Each state has multiple **frames** that cycle at a configurable interval:
-
-- **Idle animation**: Subtle changes (e.g., eye blink every ~3s) to make the character feel alive
-- **Loading animation**: Special frames shown during API refresh
-- **Transition**: When state changes (e.g., normal → concerned), brief transition animation
+Each state has multiple **frames** (4–8 per state) that cycle at per-state intervals, with per-frame duration overrides for transient expressions like blinks:
 
 ```
-Frame 1 (idle)     Frame 2 (blink)    Frame 3 (idle)
-   ▗▟███▙▖           ▗▟███▙▖          ▗▟███▙▖
-  ▐█ ◉ ◉ █▌         ▐█ — — █▌        ▐█ ◉ ◉ █▌
-  ▐█▄▄▄▄▄█▌         ▐█▄▄▄▄▄█▌        ▐█▄▄▄▄▄█▌
-   ▀█████▀           ▀█████▀          ▀█████▀
+Frame 1 (idle)     Frame 2 (blink)    Frame 3 (idle)     Frame 4 (wink)
+   ▗▟███▙▖           ▗▟███▙▖          ▗▟███▙▖            ▗▟███▙▖
+  ▐█ ◠ ◠ █▌         ▐█ ─ ─ █▌        ▐█ ◠ ◠ █▌          ▐█ ◠ ─ █▌
+  ▐█▄▄▄▄▄█▌         ▐█▄▄▄▄▄█▌        ▐█▄▄▄▄▄█▌          ▐█▄▄▄▄▄█▌
+   ▀█████▀           ▀█████▀          ▀█████▀             ▀█████▀
+  [4000–6000ms]       [150ms]         [4000–6000ms]        [200ms]
 ```
 
-**Animation timing**:
+**Per-state animation timing** — each usage level has a distinct rhythm:
 
-- Idle blink: every 3–5 seconds (randomized for natural feel)
-- Loading spinner: 200–300ms per frame
-- State transition: 500ms
+| State       | Interval       | Frames | Feel                             |
+| ----------- | -------------- | ------ | -------------------------------- |
+| `relaxed`   | 4000–6000ms    | 8      | Slow, occasional blink and wink  |
+| `normal`    | 3000–5000ms    | 6      | Focused, periodic blink          |
+| `concerned` | 2500–4000ms    | 5      | Restless, glancing around        |
+| `critical`  | 1500–2500ms    | 2      | Rapid alternation, urgency       |
+| `rateLimit` | 5000–8000ms    | 6      | Sluggish, drowsy                 |
+| `error`     | 2000–3500ms    | 4      | Confused, intermittent blink     |
+
+**Per-frame duration overrides** (`frameDurations`) — transient expressions use short fixed durations instead of the state interval:
+
+| Expression | Duration | Description                              |
+| ---------- | -------- | ---------------------------------------- |
+| Blink (──) | 150ms    | Natural eye-closing, barely perceptible  |
+| Wink (◠─)  | 200ms    | Playful asymmetric blink                 |
+| Glance (◔◔)| 300ms    | Brief sideways look                      |
+| Drowsy (_ _)| 400ms   | Slow heavy-lidded droop (rate-limited)   |
+
+**Timing resolution order**: `frameDurations[i]` > `state.timing` > `preset.defaultTiming` > constructor defaults (3–5s)
 
 #### Speech Bubbles
 
@@ -254,10 +267,11 @@ Characters display short context-aware messages in speech bubbles:
 
 **Bubble behavior**:
 
-- One message shown at a time, rotated periodically
-- Messages change based on current character state
-- Each state has a pool of messages (randomly selected)
-- Bubble auto-hides after a few seconds, then shows again with a new message
+- One message shown at a time, managed by the animator's speech timer
+- Messages rotate every 45–75 seconds (`speechTiming`) — not every render cycle
+- State changes trigger an immediate message pick from the new state's pool
+- Each state has a pool of messages per language (randomly selected)
+- The animator exposes `currentMessage` and the renderer uses it when available, falling back to random pick for `--once` mode
 
 **Example messages per state**:
 
@@ -294,8 +308,10 @@ character:
 **Theme data structure** (each theme must provide):
 
 - Character art for each state (relaxed, normal, concerned, critical, rateLimit, error)
-- Multiple frames per state (minimum 2 for idle animation)
-- Loading animation frames
+- Multiple frames per state (minimum 2, recommended 4–8 for varied idle animation)
+- Optional per-state `timing` override (`AnimationTiming`)
+- Optional `frameDurations` array for per-frame duration overrides (blink, wink, etc.)
+- Preset-level `defaultTiming` and `speechTiming`
 - Recommended width/height for layout calculations
 
 #### Character Layout in Detail Pane
