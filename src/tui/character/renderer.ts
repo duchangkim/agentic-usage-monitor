@@ -35,6 +35,7 @@ export function renderCharacter(
 	availableWidth: number,
 	language: string,
 	showSpeechBubble: boolean,
+	message?: string,
 ): CharacterRenderResult {
 	const stateAnim = preset.states[state]
 	const safeIndex = frameIndex % stateAnim.frames.length
@@ -43,7 +44,7 @@ export function renderCharacter(
 	const lines: string[] = []
 
 	if (showSpeechBubble) {
-		const msg = pickMessage(preset, state, language)
+		const msg = message ?? pickMessage(preset, state, language)
 		const bubbleLines = renderSpeechBubble(msg, availableWidth)
 		lines.push(...bubbleLines)
 	}

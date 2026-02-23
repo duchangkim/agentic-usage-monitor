@@ -95,13 +95,13 @@ describe("CharacterAnimator - animation", () => {
 	it("should cycle through frames", () => {
 		return new Promise<void>((resolve) => {
 			const frames: number[] = []
+			const frameCount = robot.states.relaxed.frames.length
 			animator = new CharacterAnimator(
 				robot,
 				(frame) => {
 					frames.push(frame)
 					if (frames.length >= 3) {
-						// Should cycle between 0 and 1 for robot preset (2 frames per state)
-						expect(frames.every((f) => f === 0 || f === 1)).toBe(true)
+						expect(frames.every((f) => f >= 0 && f < frameCount)).toBe(true)
 						resolve()
 					}
 				},
@@ -161,5 +161,41 @@ describe("CharacterAnimator - updatePreset", () => {
 		// Just verify it doesn't throw
 		animator.updatePreset(robot)
 		expect(animator.currentFrame).toBe(0)
+	})
+})
+
+// ---- 6. Speech Message Management ----
+
+describe("CharacterAnimator - speech messages", () => {
+	let animator: CharacterAnimator
+
+	afterEach(() => {
+		animator?.stop()
+	})
+
+	it("currentMessage should be non-empty after start()", () => {
+		animator = new CharacterAnimator(robot, () => {})
+		animator.start()
+		expect(animator.currentMessage.length).toBeGreaterThan(0)
+	})
+
+	it("should pick new message on state change", () => {
+		animator = new CharacterAnimator(robot, () => {})
+		animator.start()
+		// Change state to get a different message pool
+		animator.setState("critical")
+		const criticalMessage = animator.currentMessage
+		// The message should come from the critical pool
+		const criticalMessages = robot.speechBubbles.en.critical
+		expect(criticalMessages).toContain(criticalMessage)
+	})
+
+	it("should accept language option", () => {
+		animator = new CharacterAnimator(robot, () => {}, { language: "ko" })
+		animator.start()
+		const msg = animator.currentMessage
+		// Should come from Korean message pool for relaxed state
+		const koMessages = robot.speechBubbles.ko.relaxed
+		expect(koMessages).toContain(msg)
 	})
 })

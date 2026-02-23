@@ -124,7 +124,60 @@ describe("Robot Preset Mini States", () => {
 	})
 })
 
-// ---- 5. Speech Bubbles ----
+// ---- 5. Animation Timing ----
+
+describe("Robot Preset Animation Timing", () => {
+	it("states with timing should have valid min < max intervals", () => {
+		const preset = requirePreset("robot")
+		for (const state of ALL_STATES) {
+			const timing = preset.states[state].timing
+			if (timing) {
+				expect(timing.minIntervalMs).toBeGreaterThan(0)
+				expect(timing.maxIntervalMs).toBeGreaterThan(timing.minIntervalMs)
+			}
+		}
+	})
+
+	it("preset defaultTiming should have valid intervals", () => {
+		const preset = requirePreset("robot")
+		if (preset.defaultTiming) {
+			expect(preset.defaultTiming.minIntervalMs).toBeGreaterThan(0)
+			expect(preset.defaultTiming.maxIntervalMs).toBeGreaterThan(preset.defaultTiming.minIntervalMs)
+		}
+	})
+
+	it("preset speechTiming should have valid intervals", () => {
+		const preset = requirePreset("robot")
+		if (preset.speechTiming) {
+			expect(preset.speechTiming.minIntervalMs).toBeGreaterThan(0)
+			expect(preset.speechTiming.maxIntervalMs).toBeGreaterThan(preset.speechTiming.minIntervalMs)
+		}
+	})
+
+	it("frameDurations length should match frames length when defined", () => {
+		const preset = requirePreset("robot")
+		for (const state of ALL_STATES) {
+			const stateAnim = preset.states[state]
+			if (stateAnim.frameDurations) {
+				expect(stateAnim.frameDurations.length).toBe(stateAnim.frames.length)
+			}
+		}
+	})
+
+	it("frameDurations values should be positive when not null", () => {
+		const preset = requirePreset("robot")
+		for (const state of ALL_STATES) {
+			const durations = preset.states[state].frameDurations
+			if (durations) {
+				for (const d of durations) {
+					if (d != null) expect(d).toBeGreaterThan(0)
+				}
+			}
+		}
+	})
+})
+
+// ---- 6. Speech Bubbles ----
 
 describe("Robot Preset Speech Bubbles", () => {
 	it("should have English speech bubbles", () => {

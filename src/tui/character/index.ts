@@ -2,6 +2,8 @@ export type {
 	CharacterState,
 	CharacterFrame,
 	CharacterStateAnimation,
+	AnimationTiming,
+	SpeechTiming,
 	SpeechMessages,
 	CharacterPreset,
 	CharacterRenderResult,

@@ -40,11 +40,11 @@ describe("renderCharacter - basic", () => {
 // ---- 2. Frame Selection ----
 
 describe("renderCharacter - frame selection", () => {
-	it("should render different content for frame 0 vs frame 1", () => {
+	it("should render different content for distinct frames", () => {
+		// relaxed frame 0 = ◠◠ (idle), frame 4 = ── (blink)
 		const frame0 = renderCharacter(robot, "relaxed", 0, 30, "en", false)
-		const frame1 = renderCharacter(robot, "relaxed", 1, 30, "en", false)
-		// Frames differ (idle vs blink)
-		expect(frame0.lines.join("")).not.toBe(frame1.lines.join(""))
+		const frameBlink = renderCharacter(robot, "relaxed", 4, 30, "en", false)
+		expect(frame0.lines.join("")).not.toBe(frameBlink.lines.join(""))
 	})
 
 	it("should wrap around if frameIndex exceeds frame count", () => {
@@ -122,7 +122,26 @@ describe("renderCharacter - alignment", () => {
 	})
 })
 
-// ---- 6. renderMiniCharacter ----
+// ---- 6. Message parameter ----
+
+describe("renderCharacter - message parameter", () => {
+	it("should use provided message when message parameter given", () => {
+		const customMsg = "Custom message!"
+		const result = renderCharacter(robot, "relaxed", 0, 30, "en", true, customMsg)
+		const allText = result.lines.join("\n")
+		expect(allText).toContain(customMsg)
+	})
+
+	it("should fall back to pickMessage when message undefined", () => {
+		const result = renderCharacter(robot, "relaxed", 0, 30, "en", true, undefined)
+		const allText = result.lines.join("\n")
+		const messages = robot.speechBubbles.en.relaxed
+		const hasMessage = messages.some((msg) => allText.includes(msg))
+		expect(hasMessage).toBe(true)
+	})
+})
+
+// ---- 7. renderMiniCharacter ----
 
 describe("renderMiniCharacter", () => {
 	it("should return 2 raw frame lines for robot preset", () => {

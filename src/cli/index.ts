@@ -394,6 +394,7 @@ async function main(): Promise<void> {
 					width - 4,
 					config.character.language,
 					config.character.speechBubble,
+					undefined,
 				)
 				characterLines = charResult.lines
 			}
@@ -443,6 +444,7 @@ async function main(): Promise<void> {
 					width - 4,
 					config.character.language,
 					config.character.speechBubble,
+					animator?.currentMessage,
 				)
 				characterLines = charResult.lines
 			}
@@ -460,7 +462,9 @@ async function main(): Promise<void> {
 	}
 
 	if (config.character.enabled && config.character.animation && charPreset) {
-		animator = new CharacterAnimator(charPreset, () => render())
+		animator = new CharacterAnimator(charPreset, () => render(), {
+			language: config.character.language,
+		})
 		animator.start()
 	}
 
