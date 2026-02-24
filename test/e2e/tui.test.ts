@@ -447,3 +447,120 @@ describe("TUI Rendering - Character System", () => {
 		}
 	})
 })
+
+describe("TUI Rendering - Character Colors", () => {
+	const ESC = String.fromCharCode(27)
+	const ANSI_PATTERN = new RegExp(ESC + "\\[")
+
+	let mockServer: MockServerHandle
+
+	beforeAll(async () => {
+		mockServer = await startMockServer({ scenario: "healthy" })
+	})
+
+	afterAll(async () => {
+		await mockServer.stop()
+	})
+
+	it("should include ANSI codes in character body lines in truecolor mode", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		// Find the character head line and verify it contains ANSI escape codes
+		const headLine = result.stdout
+			.split("\n")
+			.find((l: string) => l.includes("▗▟███▙▖"))
+		expect(headLine).toBeDefined()
+		expect(headLine).toMatch(ANSI_PATTERN)
+	})
+
+	it("should use cyan body RGB for normal state (healthy scenario, 44%)", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+		const result = await runCli(["--once", "--theme", "default"], context)
+
+		expect(result.exitCode).toBe(0)
+		// healthy scenario: 44% 5h → normal state → cyan body (6,182,212)
+		expect(result.stdout).toContain("38;2;6;182;212")
+	})
+
+	it("should use red body RGB for critical state (highUsage scenario, 85%)", async () => {
+		const server = await startMockServer({ scenario: "highUsage" })
+		const ctx = await createTestContext({
+			mockServer: server,
+			scenario: "highUsage",
+			termWidth: 52,
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+
+		try {
+			const result = await runCli(["--once", "--theme", "default"], ctx)
+
+			expect(result.exitCode).toBe(0)
+			// highUsage: 85% → critical state → red body (239,68,68)
+			expect(result.stdout).toContain("38;2;239;68;68")
+		} finally {
+			await server.stop()
+		}
+	})
+
+	it("should use Nord palette cyan for character body with --theme nord", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+		const result = await runCli(["--once", "--theme", "nord"], context)
+
+		expect(result.exitCode).toBe(0)
+		// healthy → normal → cyan body, Nord cyan = nord8 (136,192,208)
+		expect(result.stdout).toContain("38;2;136;192;208")
+	})
+
+	it("should include ANSI codes in mini character in compact mode", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			env: { NO_COLOR: undefined, COLORTERM: "truecolor" },
+		})
+		const result = await runCli(["--once", "--compact"], context)
+
+		expect(result.exitCode).toBe(0)
+		const headLine = result.stdout
+			.split("\n")
+			.find((l: string) => l.includes("▗▟███▙▖"))
+		expect(headLine).toBeDefined()
+		expect(headLine).toMatch(ANSI_PATTERN)
+	})
+
+	it("should not include ANSI codes in character when NO_COLOR=1", async () => {
+		const context = await createTestContext({
+			mockServer,
+			scenario: "healthy",
+			termWidth: 52,
+			env: { NO_COLOR: "1" },
+		})
+		const result = await runCli(["--once"], context)
+
+		expect(result.exitCode).toBe(0)
+		// Character lines should have NO ANSI codes when NO_COLOR is set
+		const charLines = result.stdout
+			.split("\n")
+			.filter((l: string) => l.includes("▗▟███▙▖") || l.includes("▀█████▀"))
+		expect(charLines.length).toBeGreaterThan(0)
+		for (const line of charLines) {
+			expect(line).not.toMatch(ANSI_PATTERN)
+		}
+	})
+})

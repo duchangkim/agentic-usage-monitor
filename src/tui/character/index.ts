@@ -9,6 +9,7 @@ export type {
 	CharacterRenderResult,
 } from "./types"
 
+export { getCharacterColors, type CharacterColorScheme } from "./colorizer"
 export { deriveCharacterState } from "./state"
 export { renderCharacter, getCharacterHeight, renderMiniCharacter } from "./renderer"
 export { CharacterAnimator, type CharacterAnimatorOptions } from "./animation"

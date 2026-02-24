@@ -170,6 +170,50 @@ function createNordTheme(level: ColorLevel): Theme {
 	}
 }
 
+// ---- Character Palette ----
+
+export interface CharacterPalette {
+	readonly green: ColorDef
+	readonly cyan: ColorDef
+	readonly yellow: ColorDef
+	readonly red: ColorDef
+	readonly magenta: ColorDef
+	readonly gray: ColorDef
+	readonly white: ColorDef
+	readonly dimGray: ColorDef
+}
+
+const DEFAULT_CHARACTER_PALETTE: CharacterPalette = {
+	green: PRIMITIVES.green,
+	cyan: PRIMITIVES.cyan,
+	yellow: PRIMITIVES.yellow,
+	red: PRIMITIVES.red,
+	magenta: PRIMITIVES.magenta,
+	gray: PRIMITIVES.gray,
+	white: PRIMITIVES.white,
+	dimGray: PRIMITIVES.dimGray,
+}
+
+const NORD_CHARACTER_PALETTE: CharacterPalette = {
+	green: NORD.nord14,
+	cyan: NORD.nord8,
+	yellow: NORD.nord13,
+	red: NORD.nord11,
+	magenta: NORD.nord15,
+	gray: NORD.nord3,
+	white: NORD.nord4,
+	dimGray: NORD.nord3,
+}
+
+const CHARACTER_PALETTES: Record<string, CharacterPalette> = {
+	default: DEFAULT_CHARACTER_PALETTE,
+	nord: NORD_CHARACTER_PALETTE,
+}
+
+export function getCharacterPalette(): CharacterPalette {
+	return CHARACTER_PALETTES[_activeTheme.name] ?? DEFAULT_CHARACTER_PALETTE
+}
+
 // ---- Preset Registry ----
 
 type ThemeFactory = (level: ColorLevel) => Theme

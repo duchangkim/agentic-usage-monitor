@@ -1,3 +1,5 @@
+import { getColorLevel } from "../theme"
+import { colorizeLine, getCharacterColors } from "./colorizer"
 import type { CharacterPreset, CharacterRenderResult, CharacterState } from "./types"
 
 const SPEECH_BUBBLE_LINES = 3
@@ -49,8 +51,11 @@ export function renderCharacter(
 		lines.push(...bubbleLines)
 	}
 
-	for (const frameLine of frame ?? []) {
-		lines.push(centerPad(frameLine, availableWidth))
+	const scheme = getCharacterColors(state, getColorLevel())
+	const frameLines = frame ?? []
+	for (let i = 0; i < frameLines.length; i++) {
+		const padded = centerPad(frameLines[i] ?? "", availableWidth)
+		lines.push(colorizeLine(padded, i, scheme, frameLines.length))
 	}
 
 	return {
@@ -69,5 +74,7 @@ export function renderMiniCharacter(
 	state: CharacterState,
 ): string[] | null {
 	if (!preset.miniStates) return null
-	return [...preset.miniStates[state]]
+	const miniFrame = preset.miniStates[state]
+	const scheme = getCharacterColors(state, getColorLevel())
+	return miniFrame.map((line, i) => colorizeLine(line, i, scheme, miniFrame.length))
 }

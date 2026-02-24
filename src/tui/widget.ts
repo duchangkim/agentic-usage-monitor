@@ -1,5 +1,5 @@
 import { colorByPercentage, formatTimeRemaining } from "./progress"
-import { boxBottom, boxDivider, boxRow, boxTop, stripAnsi, text } from "./renderer"
+import { boxBottom, boxDivider, boxRow, boxTop, pad as padStr, stripAnsi, text } from "./renderer"
 import type { BoxStyle } from "./styles"
 import { getTheme } from "./theme"
 
@@ -235,7 +235,9 @@ export function renderCompact3Lines(
 	// Horizontal layout: [mini char | data] when mini character is present
 	const MINI_GAP = 4
 	const hasMini = miniCharacterLines && miniCharacterLines.length >= 2
-	const leftColWidth = hasMini ? Math.max(...miniCharacterLines.map((l) => l.length)) + MINI_GAP : 0
+	const leftColWidth = hasMini
+		? Math.max(...miniCharacterLines.map((l) => stripAnsi(l).length)) + MINI_GAP
+		: 0
 	const rightColWidth = width - leftColWidth
 
 	let line1: string
@@ -268,10 +270,10 @@ export function renderCompact3Lines(
 	const miniLine0 = miniCharacterLines?.[0]
 	const miniLine1 = miniCharacterLines?.[1]
 	if (miniLine0 && miniLine1) {
-		const pad = " ".repeat(leftColWidth)
-		const char0 = miniLine0.padEnd(leftColWidth)
-		const char1 = miniLine1.padEnd(leftColWidth)
-		return [pad + line1, char0 + line2, char1 + line3]
+		const emptyPad = " ".repeat(leftColWidth)
+		const char0 = padStr(miniLine0, leftColWidth)
+		const char1 = padStr(miniLine1, leftColWidth)
+		return [emptyPad + line1, char0 + line2, char1 + line3]
 	}
 	return [line1, line2, line3]
 }
