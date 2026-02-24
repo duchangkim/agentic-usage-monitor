@@ -450,14 +450,15 @@ async function main(): Promise<void> {
 			}
 
 			const { colors } = getTheme()
-			clearScreen()
-			console.log(renderRateLimitsWidget(state, width, false, characterLines).join("\n"))
-			console.log("")
-			console.log(
+			const lines: string[] = [
+				...renderRateLimitsWidget(state, width, false, characterLines),
+				"",
 				renderStatusBar(state.isRunning, state.lastError, config.display.refreshInterval, width),
-			)
-			console.log("")
-			console.log(text("q:exit  e:config  E:apply", colors.fg.subtle))
+				"",
+				text("q:exit  e:config  E:apply", colors.fg.subtle),
+			]
+			// In-place update: cursor home → overwrite lines → clear remaining
+			process.stdout.write(`\x1B[H${lines.map((l) => `${l}\x1B[K`).join("\n")}\x1B[J`)
 		}
 	}
 

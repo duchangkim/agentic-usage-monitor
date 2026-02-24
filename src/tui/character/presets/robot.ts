@@ -10,7 +10,7 @@ export const robotPreset: CharacterPreset = {
 		relaxed: {
 			timing: { minIntervalMs: 4000, maxIntervalMs: 6000 },
 			//                idle   idle   idle   idle   blink  idle   idle   wink
-			frameDurations: [null, null, null, null, 150, null, null, 200],
+			frameDurations: [null, null, null, null, 400, null, null, 250],
 			frames: [
 				["  ▗▟███▙▖  ", " ▐█ ◠ ◠ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
 				["  ▗▟███▙▖  ", " ▐█ ◠ ◠ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
@@ -24,7 +24,7 @@ export const robotPreset: CharacterPreset = {
 		},
 		normal: {
 			//                idle   idle   idle   blink  idle   idle
-			frameDurations: [null, null, null, 150, null, null],
+			frameDurations: [null, null, null, 400, null, null],
 			frames: [
 				["  ▗▟███▙▖  ", " ▐█ ◉ ◉ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
 				["  ▗▟███▙▖  ", " ▐█ ◉ ◉ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
@@ -37,7 +37,7 @@ export const robotPreset: CharacterPreset = {
 		concerned: {
 			timing: { minIntervalMs: 2500, maxIntervalMs: 4000 },
 			//                idle   idle   blink  idle   glance
-			frameDurations: [null, null, 150, null, 300],
+			frameDurations: [null, null, 400, null, 300],
 			frames: [
 				["  ▗▟███▙▖  ", " ▐█ ◑ ◑ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
 				["  ▗▟███▙▖  ", " ▐█ ◑ ◑ █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
@@ -69,7 +69,7 @@ export const robotPreset: CharacterPreset = {
 		error: {
 			timing: { minIntervalMs: 2000, maxIntervalMs: 3500 },
 			//                idle   idle   blink  idle
-			frameDurations: [null, null, 150, null],
+			frameDurations: [null, null, 400, null],
 			frames: [
 				["  ▗▟███▙▖  ", " ▐█ ? ? █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
 				["  ▗▟███▙▖  ", " ▐█ ? ? █▌ ", " ▐█▄▄▄▄▄█▌ ", "  ▀█████▀  "],
