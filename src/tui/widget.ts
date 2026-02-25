@@ -65,6 +65,94 @@ function renderRateLimitRow(
 	return `${label}${bar} ${pct} ${reset}`
 }
 
+function renderProfileSection(
+	profile: ProfileData,
+	width: number,
+	boxStyle: BoxStyle,
+	compact: boolean,
+): string[] {
+	const { colors } = getTheme()
+	const lines: string[] = []
+	const maxNameLen = width - 12
+	const name =
+		profile.displayName.length > maxNameLen
+			? `${profile.displayName.slice(0, maxNameLen - 1)}…`
+			: profile.displayName
+
+	lines.push(boxRow(`${text("User:", colors.fg.subtle)} ${name}`, width, { boxStyle }))
+
+	if (profile.organization && !compact) {
+		const maxOrgLen = width - 12
+		const org =
+			profile.organization.length > maxOrgLen
+				? `${profile.organization.slice(0, maxOrgLen - 1)}…`
+				: profile.organization
+		lines.push(boxRow(`${text("Org:", colors.fg.subtle)}  ${org}`, width, { boxStyle }))
+	}
+
+	if (profile.planBadge) {
+		const badgeColors = {
+			ENT: colors.badge.ent,
+			MAX: colors.badge.max,
+			PRO: colors.badge.pro,
+		} as const
+		const badge = text(` ${profile.planBadge}`, badgeColors[profile.planBadge])
+		lines.push(boxRow(`${text("Plan:", colors.fg.subtle)}${badge}`, width, { boxStyle }))
+	}
+
+	return lines
+}
+
+function renderUsageRows(
+	usage: UsageData | null,
+	error: string | null,
+	width: number,
+	boxStyle: BoxStyle,
+	compact: boolean,
+): string[] {
+	const { colors } = getTheme()
+	const lines: string[] = []
+
+	if (!usage) {
+		if (error) {
+			lines.push(boxRow(text(error, colors.status.danger), width, { boxStyle }))
+		} else {
+			lines.push(boxRow(text("Loading...", colors.fg.subtle), width, { boxStyle }))
+		}
+		return lines
+	}
+
+	const label5h = compact ? "5h: " : "5-Hour: "
+	const label7d = compact ? "7d: " : "7-Day:  "
+	const labelOpus = compact ? "Op: " : "Opus:   "
+
+	if (usage.fiveHour) {
+		lines.push(
+			boxRow(renderRateLimitRow(label5h, usage.fiveHour, width, compact), width, { boxStyle }),
+		)
+	}
+
+	if (usage.sevenDay) {
+		lines.push(
+			boxRow(renderRateLimitRow(label7d, usage.sevenDay, width, compact), width, { boxStyle }),
+		)
+	}
+
+	if (usage.sevenDayOpus) {
+		lines.push(
+			boxRow(renderRateLimitRow(labelOpus, usage.sevenDayOpus, width, compact), width, {
+				boxStyle,
+			}),
+		)
+	}
+
+	if (!usage.fiveHour && !usage.sevenDay) {
+		lines.push(boxRow(text("No limits", colors.status.success), width, { boxStyle }))
+	}
+
+	return lines
+}
+
 export function renderUsageWidget(
 	config: WidgetConfig,
 	profile: ProfileData | null,
@@ -87,71 +175,11 @@ export function renderUsageWidget(
 	}
 
 	if (profile) {
-		const maxNameLen = width - 12
-		const name =
-			profile.displayName.length > maxNameLen
-				? `${profile.displayName.slice(0, maxNameLen - 1)}…`
-				: profile.displayName
-
-		lines.push(boxRow(`${text("User:", colors.fg.subtle)} ${name}`, width, { boxStyle }))
-
-		if (profile.organization && !compact) {
-			const maxOrgLen = width - 12
-			const org =
-				profile.organization.length > maxOrgLen
-					? `${profile.organization.slice(0, maxOrgLen - 1)}…`
-					: profile.organization
-			lines.push(boxRow(`${text("Org:", colors.fg.subtle)}  ${org}`, width, { boxStyle }))
-		}
-
-		if (profile.planBadge) {
-			const badgeColors = {
-				ENT: colors.badge.ent,
-				MAX: colors.badge.max,
-				PRO: colors.badge.pro,
-			} as const
-			const badge = text(` ${profile.planBadge}`, badgeColors[profile.planBadge])
-			lines.push(boxRow(`${text("Plan:", colors.fg.subtle)}${badge}`, width, { boxStyle }))
-		}
-
+		lines.push(...renderProfileSection(profile, width, boxStyle, compact))
 		lines.push(boxDivider(width, { boxStyle }))
 	}
 
-	if (!usage) {
-		if (error) {
-			lines.push(boxRow(text(error, colors.status.danger), width, { boxStyle }))
-		} else {
-			lines.push(boxRow(text("Loading...", colors.fg.subtle), width, { boxStyle }))
-		}
-	} else {
-		const label5h = compact ? "5h: " : "5-Hour: "
-		const label7d = compact ? "7d: " : "7-Day:  "
-		const labelOpus = compact ? "Op: " : "Opus:   "
-
-		if (usage.fiveHour) {
-			lines.push(
-				boxRow(renderRateLimitRow(label5h, usage.fiveHour, width, compact), width, { boxStyle }),
-			)
-		}
-
-		if (usage.sevenDay) {
-			lines.push(
-				boxRow(renderRateLimitRow(label7d, usage.sevenDay, width, compact), width, { boxStyle }),
-			)
-		}
-
-		if (usage.sevenDayOpus) {
-			lines.push(
-				boxRow(renderRateLimitRow(labelOpus, usage.sevenDayOpus, width, compact), width, {
-					boxStyle,
-				}),
-			)
-		}
-
-		if (!usage.fiveHour && !usage.sevenDay) {
-			lines.push(boxRow(text("No limits", colors.status.success), width, { boxStyle }))
-		}
-	}
+	lines.push(...renderUsageRows(usage, error, width, boxStyle, compact))
 
 	if (lastFetch) {
 		lines.push(boxDivider(width, { boxStyle }))

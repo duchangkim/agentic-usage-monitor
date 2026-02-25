@@ -8,12 +8,17 @@ const VERSION =
 		: (process.env.npm_package_version ?? "dev")
 
 import { execSync } from "node:child_process"
-import { VALID_THEMES, getDefaultConfigPath, loadConfig } from "../config"
+import { type ResolvedConfig, VALID_THEMES, getDefaultConfigPath, loadConfig } from "../config"
 import { getAgent, getAgentNames, loadAgentConfig, resolveAgentConfig } from "../config/agents"
 import { type CredentialSource, VALID_CREDENTIAL_SOURCES } from "../data/oauth-credentials"
-import { type OAuthMonitorState, createOAuthMonitor } from "../monitor/oauth-monitor"
+import {
+	type OAuthMonitor,
+	type OAuthMonitorState,
+	createOAuthMonitor,
+} from "../monitor/oauth-monitor"
 import {
 	CharacterAnimator,
+	type CharacterPreset,
 	deriveCharacterState,
 	getCharacterPreset,
 	renderCharacter,
@@ -245,7 +250,7 @@ function loadAgents() {
 	return resolveAgentConfig(customConfig)
 }
 
-async function main(): Promise<void> {
+async function handleSubcommand(): Promise<void> {
 	if (process.argv[2] === "launch") {
 		const { runLaunch } = await import("./launch")
 		runLaunch(process.argv.slice(3))
@@ -264,16 +269,14 @@ async function main(): Promise<void> {
 		process.exit(0)
 	}
 
-	// Check if first argument is an agent name
 	const firstArg = process.argv[2]
 	if (firstArg && !firstArg.startsWith("-")) {
 		const agents = loadAgents()
 		const agent = getAgent(agents, firstArg)
 
 		if (agent) {
-			// Agent subcommand: delegate to launch with agent's command and credential source
 			const { runLaunch } = await import("./launch")
-			const agentArgs = process.argv.slice(3) // remaining args after agent name
+			const agentArgs = process.argv.slice(3)
 			const launchArgs = [
 				"--source",
 				agent.credential.source,
@@ -285,7 +288,6 @@ async function main(): Promise<void> {
 			process.exit(0)
 		}
 
-		// If it's not a known subcommand/flag, show error with available agents
 		if (firstArg !== "launch") {
 			const agentNames = getAgentNames(agents)
 			const { colors } = getTheme()
@@ -297,6 +299,69 @@ async function main(): Promise<void> {
 			process.exit(1)
 		}
 	}
+}
+
+async function runOnceMode(
+	monitor: OAuthMonitor,
+	config: ResolvedConfig,
+	compactMode: boolean,
+	charPreset: CharacterPreset | undefined,
+): Promise<void> {
+	const width = getTerminalWidth()
+	await monitor.fetch()
+	const state = monitor.getState()
+
+	if (compactMode) {
+		let miniLines: string[] | undefined
+		if (config.character.enabled && charPreset) {
+			const charState = deriveCharacterState(stateToUsage(state), state.lastError)
+			miniLines = renderMiniCharacter(charPreset, charState) ?? undefined
+		}
+		const lines = renderCompact3Lines(
+			stateToProfile(state),
+			stateToUsage(state),
+			state.lastError,
+			width,
+			miniLines,
+		)
+		for (const line of lines) {
+			console.log(line)
+		}
+	} else {
+		let characterLines: string[] | undefined
+		if (config.character.enabled && charPreset) {
+			const charState = deriveCharacterState(stateToUsage(state), state.lastError)
+			const charResult = renderCharacter(
+				charPreset,
+				charState,
+				0,
+				width - 4,
+				config.character.language,
+				config.character.speechBubble,
+				undefined,
+			)
+			characterLines = charResult.lines
+		}
+		const output = renderRateLimitsWidget(state, width, false, characterLines).join("\n")
+		console.log(output)
+		if (state.lastError) {
+			const { colors } = getTheme()
+			console.log("")
+			console.log(text("Please authenticate via Claude Code or OpenCode.", colors.status.warning))
+		}
+	}
+	process.exit(0)
+}
+
+const SHIFT_ARROW_KEYS: Record<string, PaneMoveDirection> = {
+	"\x1b[1;2A": "up",
+	"\x1b[1;2B": "down",
+	"\x1b[1;2C": "right",
+	"\x1b[1;2D": "left",
+}
+
+async function main(): Promise<void> {
+	await handleSubcommand()
 
 	const args = parseArgs(process.argv.slice(2))
 
@@ -363,50 +428,7 @@ async function main(): Promise<void> {
 	const charPreset = getCharacterPreset(config.character.theme)
 
 	if (args.once) {
-		const width = getTerminalWidth()
-		await monitor.fetch()
-		const state = monitor.getState()
-
-		if (compactMode) {
-			let miniLines: string[] | undefined
-			if (config.character.enabled && charPreset) {
-				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
-				miniLines = renderMiniCharacter(charPreset, charState) ?? undefined
-			}
-			const lines = renderCompact3Lines(
-				stateToProfile(state),
-				stateToUsage(state),
-				state.lastError,
-				width,
-				miniLines,
-			)
-			for (const line of lines) {
-				console.log(line)
-			}
-		} else {
-			let characterLines: string[] | undefined
-			if (config.character.enabled && charPreset && !compactMode) {
-				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
-				const charResult = renderCharacter(
-					charPreset,
-					charState,
-					0,
-					width - 4,
-					config.character.language,
-					config.character.speechBubble,
-					undefined,
-				)
-				characterLines = charResult.lines
-			}
-			const output = renderRateLimitsWidget(state, width, false, characterLines).join("\n")
-			console.log(output)
-			if (state.lastError) {
-				const { colors } = getTheme()
-				console.log("")
-				console.log(text("Please authenticate via Claude Code or OpenCode.", colors.status.warning))
-			}
-		}
-		process.exit(0)
+		await runOnceMode(monitor, config, compactMode, charPreset)
 	}
 
 	hideCursor()
@@ -521,69 +543,35 @@ async function main(): Promise<void> {
 		process.stdin.on("data", (data: Buffer) => {
 			const key = data.toString()
 
-			// q/Q — exit
-			if (key === "q" || key === "Q") {
-				killTmuxSession()
-				return
-			}
-
-			// Ctrl+C
-			if (key === "\x03") {
-				killTmuxSession()
-				return
-			}
-
-			// e — open config in system editor
-			if (key === "e") {
-				openConfigInEditor(configPath)
-				return
-			}
-
-			// E (Shift+e) — reload and apply config
-			if (key === "E") {
-				const result = reloadAndApplyConfig(configPath)
-				if (result.success) {
-					config = result.config
-					compactMode = args.compact || config.widget.compact
+			switch (key) {
+				case "q":
+				case "Q":
+				case "\x03":
+					killTmuxSession()
+					return
+				case "e":
+					openConfigInEditor(configPath)
+					return
+				case "E": {
+					const result = reloadAndApplyConfig(configPath)
+					if (result.success) {
+						config = result.config
+						compactMode = args.compact || config.widget.compact
+					}
+					clearScreen()
+					render()
+					return
 				}
-				clearScreen()
-				render()
-				return
+				case "\t":
+					compactMode = !compactMode
+					clearScreen()
+					render()
+					return
 			}
 
-			// Tab — toggle compact/detailed mode (only in left/right position)
-			if (key === "\t") {
-				// Only toggle if we're not in a forced compact position (top/bottom)
-				// In tmux, we can't reliably detect position, so just toggle the mode
-				// Note: compact mode is forced when position is top/bottom via Shift+Arrow
-				if (!compactMode) {
-					compactMode = true
-				} else {
-					compactMode = false
-				}
-				clearScreen()
-				render()
-				return
-			}
-
-			// Shift+Arrow keys (ANSI escape sequences with extended-keys)
-			// \x1b[1;2A = Shift+Up, \x1b[1;2B = Shift+Down
-			// \x1b[1;2C = Shift+Right, \x1b[1;2D = Shift+Left
-			if (key === "\x1b[1;2A") {
-				movePane("up")
-				return
-			}
-			if (key === "\x1b[1;2B") {
-				movePane("down")
-				return
-			}
-			if (key === "\x1b[1;2C") {
-				movePane("right")
-				return
-			}
-			if (key === "\x1b[1;2D") {
-				movePane("left")
-				return
+			const direction = SHIFT_ARROW_KEYS[key]
+			if (direction) {
+				movePane(direction)
 			}
 		})
 	}

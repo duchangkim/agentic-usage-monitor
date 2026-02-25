@@ -117,6 +117,54 @@ export class ClaudeOAuthApi {
 		return { success: true, data: this.credentials }
 	}
 
+	private async handleAuthError<T>(
+		endpoint: string,
+		usedToken: string,
+	): Promise<OAuthApiResult<T>> {
+		this.credentials = null
+
+		// Step 1: Re-read credentials from disk (another process may have refreshed them)
+		const reloaded = loadOAuthCredentials(this.credentialSource)
+		if (reloaded.success && reloaded.credentials.accessToken !== usedToken) {
+			this.credentials = reloaded.credentials
+			this.actualSource = reloaded.source
+			return this.request<T>(endpoint, true)
+		}
+
+		// Step 2: Token on disk is still the same (expired).
+		// Try to refresh using the refresh_token.
+		const refreshToken = reloaded.success ? reloaded.credentials.refreshToken : undefined
+		if (refreshToken) {
+			const refreshResult = await refreshOAuthToken(refreshToken)
+			if (refreshResult.success) {
+				this.credentials = refreshResult.credentials
+				const source = reloaded.success ? reloaded.source : this.actualSource
+				if (source) {
+					writeBackCredentials(source, refreshResult.credentials)
+				}
+				return this.request<T>(endpoint, true)
+			}
+			// Refresh token is also expired/invalid — give actionable message
+			return {
+				success: false,
+				error: {
+					type: "authentication_error",
+					message: "Session expired. Re-authenticate via /login",
+					statusCode: 401,
+				},
+			}
+		}
+		// No refresh token available at all
+		return {
+			success: false,
+			error: {
+				type: "authentication_error",
+				message: "OAuth token expired. Re-authenticate via /login",
+				statusCode: 401,
+			},
+		}
+	}
+
 	private async request<T>(endpoint: string, isRetry = false): Promise<OAuthApiResult<T>> {
 		const credResult = await this.ensureCredentials()
 		if (!credResult.success) {
@@ -137,51 +185,11 @@ export class ClaudeOAuthApi {
 			})
 
 			if (!response.ok) {
+				if ((response.status === 401 || response.status === 403) && !isRetry) {
+					return this.handleAuthError<T>(endpoint, usedToken)
+				}
 				if (response.status === 401 || response.status === 403) {
 					this.credentials = null
-
-					if (!isRetry) {
-						// Step 1: Re-read credentials from disk (another process may have refreshed them)
-						const reloaded = loadOAuthCredentials(this.credentialSource)
-						if (reloaded.success && reloaded.credentials.accessToken !== usedToken) {
-							this.credentials = reloaded.credentials
-							this.actualSource = reloaded.source
-							return this.request<T>(endpoint, true)
-						}
-
-						// Step 2: Token on disk is still the same (expired).
-						// Try to refresh using the refresh_token.
-						const refreshToken = reloaded.success ? reloaded.credentials.refreshToken : undefined
-						if (refreshToken) {
-							const refreshResult = await refreshOAuthToken(refreshToken)
-							if (refreshResult.success) {
-								this.credentials = refreshResult.credentials
-								const source = reloaded.success ? reloaded.source : this.actualSource
-								if (source) {
-									writeBackCredentials(source, refreshResult.credentials)
-								}
-								return this.request<T>(endpoint, true)
-							}
-							// Refresh token is also expired/invalid — give actionable message
-							return {
-								success: false,
-								error: {
-									type: "authentication_error",
-									message: "Session expired. Re-authenticate via /login",
-									statusCode: 401,
-								},
-							}
-						}
-						// No refresh token available at all
-						return {
-							success: false,
-							error: {
-								type: "authentication_error",
-								message: "OAuth token expired. Re-authenticate via /login",
-								statusCode: 401,
-							},
-						}
-					}
 				}
 				const errorText = await response.text()
 				return {

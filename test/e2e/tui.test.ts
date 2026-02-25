@@ -473,9 +473,7 @@ describe("TUI Rendering - Character Colors", () => {
 
 		expect(result.exitCode).toBe(0)
 		// Find the character head line and verify it contains ANSI escape codes
-		const headLine = result.stdout
-			.split("\n")
-			.find((l: string) => l.includes("▗▟███▙▖"))
+		const headLine = result.stdout.split("\n").find((l: string) => l.includes("▗▟███▙▖"))
 		expect(headLine).toBeDefined()
 		expect(headLine).toMatch(ANSI_PATTERN)
 	})
@@ -537,9 +535,7 @@ describe("TUI Rendering - Character Colors", () => {
 		const result = await runCli(["--once", "--compact"], context)
 
 		expect(result.exitCode).toBe(0)
-		const headLine = result.stdout
-			.split("\n")
-			.find((l: string) => l.includes("▗▟███▙▖"))
+		const headLine = result.stdout.split("\n").find((l: string) => l.includes("▗▟███▙▖"))
 		expect(headLine).toBeDefined()
 		expect(headLine).toMatch(ANSI_PATTERN)
 	})

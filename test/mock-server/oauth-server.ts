@@ -30,11 +30,85 @@ interface RequestLogEntry {
 	scenario: string
 }
 
+function jsonResponse(data: unknown, status = 200): Response {
+	return new Response(JSON.stringify(data), {
+		status,
+		headers: { "Content-Type": "application/json" },
+	})
+}
+
+async function handleTokenRefresh(req: Request): Promise<Response> {
+	const body = (await req.json()) as {
+		grant_type?: string
+		refresh_token?: string
+		client_id?: string
+	}
+	if (body.grant_type === "refresh_token" && body.refresh_token === VALID_REFRESH_TOKEN) {
+		return jsonResponse({
+			access_token: REFRESHED_TOKEN,
+			refresh_token: "mock-new-refresh-token",
+			expires_in: 3600,
+		})
+	}
+	return jsonResponse(
+		{ error: "invalid_grant", error_description: "The refresh token is expired or invalid" },
+		400,
+	)
+}
+
+async function handleScenarioRoute(
+	scenario: MockScenario,
+	path: string,
+	req: Request,
+	currentScenario: string,
+	setScenario: (name: string) => void,
+	requestLog: RequestLogEntry[],
+): Promise<Response> {
+	if (scenario.delay) {
+		await new Promise((resolve) => setTimeout(resolve, scenario.delay))
+	}
+
+	if (scenario.statusCode && scenario.statusCode >= 400) {
+		return jsonResponse(scenario.errorBody ?? { error: "error" }, scenario.statusCode)
+	}
+
+	if (path === "/api/oauth/usage") {
+		return jsonResponse(scenario.usage)
+	}
+	if (path === "/api/oauth/profile") {
+		return jsonResponse(scenario.profile)
+	}
+	if (path === "/health") {
+		return jsonResponse({
+			status: "ok",
+			scenario: currentScenario,
+			availableScenarios: Object.keys(SCENARIOS),
+		})
+	}
+	if (path === "/_test/scenario" && req.method === "POST") {
+		const body = (await req.json()) as { scenario: string }
+		if (body.scenario && SCENARIOS[body.scenario]) {
+			setScenario(body.scenario)
+			return jsonResponse({ scenario: body.scenario })
+		}
+		return jsonResponse({ error: "invalid_scenario" }, 400)
+	}
+	if (path === "/_test/requests") {
+		return jsonResponse(requestLog)
+	}
+
+	return new Response("Not found", { status: 404 })
+}
+
 export async function startMockServer(options: MockServerOptions = {}): Promise<MockServerHandle> {
 	const port = options.port ?? 0
 	let currentScenario = options.scenario ?? "healthy"
 	const verbose = options.verbose ?? false
 	const requestLog: RequestLogEntry[] = []
+
+	const setScenario = (name: string) => {
+		currentScenario = name
+	}
 
 	const server = Bun.serve({
 		port,
@@ -61,117 +135,28 @@ export async function startMockServer(options: MockServerOptions = {}): Promise<
 			try {
 				scenario = getScenario(currentScenario)
 			} catch {
-				return new Response(JSON.stringify({ error: "invalid_scenario" }), {
-					status: 500,
-					headers: { "Content-Type": "application/json" },
-				})
+				return jsonResponse({ error: "invalid_scenario" }, 500)
 			}
 
-			// Token refresh endpoint: POST /v1/oauth/token
 			if (path === "/v1/oauth/token" && req.method === "POST") {
-				const body = (await req.json()) as {
-					grant_type?: string
-					refresh_token?: string
-					client_id?: string
-				}
-				if (body.grant_type === "refresh_token" && body.refresh_token === VALID_REFRESH_TOKEN) {
-					return new Response(
-						JSON.stringify({
-							access_token: REFRESHED_TOKEN,
-							refresh_token: "mock-new-refresh-token",
-							expires_in: 3600,
-						}),
-						{ status: 200, headers: { "Content-Type": "application/json" } },
-					)
-				}
-				// Invalid or expired refresh token
-				return new Response(
-					JSON.stringify({
-						error: "invalid_grant",
-						error_description: "The refresh token is expired or invalid",
-					}),
-					{ status: 400, headers: { "Content-Type": "application/json" } },
-				)
+				return handleTokenRefresh(req)
 			}
 
-			// Token-based auth: if the request uses the known expired token, force 401
-			// regardless of scenario (simulates real API rejecting an expired access token).
 			const authHeader = req.headers.get("authorization")
 			if (authHeader === `Bearer ${EXPIRED_TOKEN}`) {
-				return new Response(
-					JSON.stringify({
+				return jsonResponse(
+					{
 						error: {
 							type: "authentication_error",
 							message:
 								"OAuth token has expired. Please obtain a new token or refresh your existing token.",
 						},
-					}),
-					{ status: 401, headers: { "Content-Type": "application/json" } },
-				)
-			}
-
-			if (scenario.delay) {
-				await new Promise((resolve) => setTimeout(resolve, scenario.delay))
-			}
-
-			if (scenario.statusCode && scenario.statusCode >= 400) {
-				return new Response(JSON.stringify(scenario.errorBody ?? { error: "error" }), {
-					status: scenario.statusCode,
-					headers: { "Content-Type": "application/json" },
-				})
-			}
-
-			if (path === "/api/oauth/usage") {
-				return new Response(JSON.stringify(scenario.usage), {
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				})
-			}
-
-			if (path === "/api/oauth/profile") {
-				return new Response(JSON.stringify(scenario.profile), {
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				})
-			}
-
-			if (path === "/health") {
-				return new Response(
-					JSON.stringify({
-						status: "ok",
-						scenario: currentScenario,
-						availableScenarios: Object.keys(SCENARIOS),
-					}),
-					{
-						status: 200,
-						headers: { "Content-Type": "application/json" },
 					},
+					401,
 				)
 			}
 
-			if (path === "/_test/scenario" && req.method === "POST") {
-				const body = (await req.json()) as { scenario: string }
-				if (body.scenario && SCENARIOS[body.scenario]) {
-					currentScenario = body.scenario
-					return new Response(JSON.stringify({ scenario: currentScenario }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					})
-				}
-				return new Response(JSON.stringify({ error: "invalid_scenario" }), {
-					status: 400,
-					headers: { "Content-Type": "application/json" },
-				})
-			}
-
-			if (path === "/_test/requests") {
-				return new Response(JSON.stringify(requestLog), {
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				})
-			}
-
-			return new Response("Not found", { status: 404 })
+			return handleScenarioRoute(scenario, path, req, currentScenario, setScenario, requestLog)
 		},
 	})
 
