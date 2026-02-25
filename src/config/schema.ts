@@ -24,6 +24,7 @@ export const CharacterConfigSchema = z.object({
 	animation: z.boolean().optional(),
 	speechBubble: z.boolean().optional(),
 	language: z.string().optional(),
+	shimmer: z.boolean().optional(),
 })
 
 export type CharacterConfig = z.infer<typeof CharacterConfigSchema>
@@ -64,6 +65,7 @@ export interface ResolvedConfig {
 		animation: boolean
 		speechBubble: boolean
 		language: string
+		shimmer: boolean
 	}
 }
 
@@ -88,6 +90,7 @@ export function getDefaultConfig(): ResolvedConfig {
 			animation: true,
 			speechBubble: true,
 			language: "en",
+			shimmer: true,
 		},
 	}
 }
@@ -115,6 +118,7 @@ export function resolveConfig(partial: Config): ResolvedConfig {
 			animation: partial.character?.animation ?? defaults.character.animation,
 			speechBubble: partial.character?.speechBubble ?? defaults.character.speechBubble,
 			language: partial.character?.language ?? defaults.character.language,
+			shimmer: partial.character?.shimmer ?? defaults.character.shimmer,
 		},
 	}
 }
