@@ -19,13 +19,14 @@ import {
 import {
 	CharacterAnimator,
 	type CharacterPreset,
+	ShimmerAnimator,
 	deriveCharacterState,
 	getCharacterPreset,
 	renderCharacter,
 	renderMiniCharacter,
 } from "../tui/character"
 import { text } from "../tui/renderer"
-import { getPresetNames, getTheme, initTheme } from "../tui/theme"
+import { getColorLevel, getPresetNames, getTheme, initTheme } from "../tui/theme"
 import {
 	type ProfileData,
 	type UsageData,
@@ -435,6 +436,7 @@ async function main(): Promise<void> {
 	clearScreen()
 
 	let animator: CharacterAnimator | null = null
+	let shimmerAnimator: ShimmerAnimator | null = null
 
 	const render = (): void => {
 		const width = getTerminalWidth()
@@ -444,7 +446,7 @@ async function main(): Promise<void> {
 			let miniLines: string[] | undefined
 			if (config.character.enabled && charPreset) {
 				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
-				miniLines = renderMiniCharacter(charPreset, charState) ?? undefined
+				miniLines = renderMiniCharacter(charPreset, charState, shimmerAnimator?.state) ?? undefined
 			}
 			const lines = renderCompact3Lines(
 				stateToProfile(state),
@@ -459,6 +461,7 @@ async function main(): Promise<void> {
 			if (config.character.enabled && charPreset && !compactMode) {
 				const charState = deriveCharacterState(stateToUsage(state), state.lastError)
 				if (animator) animator.setState(charState)
+				shimmerAnimator?.updateForState(charState)
 				const charResult = renderCharacter(
 					charPreset,
 					charState,
@@ -467,6 +470,7 @@ async function main(): Promise<void> {
 					config.character.language,
 					config.character.speechBubble,
 					animator?.currentMessage,
+					shimmerAnimator?.state,
 				)
 				characterLines = charResult.lines
 			}
@@ -491,6 +495,11 @@ async function main(): Promise<void> {
 		animator.start()
 	}
 
+	if (config.character.enabled && config.character.shimmer && getColorLevel() === "truecolor") {
+		shimmerAnimator = new ShimmerAnimator(() => render())
+		shimmerAnimator.start()
+	}
+
 	monitor.on((event) => {
 		if (event.type === "update" || event.type === "error") {
 			render()
@@ -500,6 +509,7 @@ async function main(): Promise<void> {
 	const tmuxSession = process.env.USAGE_MONITOR_SESSION
 
 	const cleanup = (): void => {
+		shimmerAnimator?.stop()
 		animator?.stop()
 		monitor.stop()
 		if (process.stdin.isTTY) {

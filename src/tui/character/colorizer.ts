@@ -163,7 +163,7 @@ export function colorizeLineMetallic(
 	line: string,
 	lineIndex: number,
 	scheme: MetallicColorScheme,
-	totalLines: number,
+	_totalLines: number,
 	luminanceMap: LuminanceTier[][],
 	shimmer: ShimmerState,
 	colorLevel: ColorLevel,
