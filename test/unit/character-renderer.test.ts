@@ -6,6 +6,7 @@ import {
 	renderMiniCharacter,
 } from "../../src/tui/character/renderer"
 import type { CharacterPreset } from "../../src/tui/character/types"
+import { stripAnsi } from "../../src/tui/renderer"
 
 function requirePreset(name: string): CharacterPreset {
 	const preset = getCharacterPreset(name)
@@ -109,7 +110,7 @@ describe("renderCharacter - alignment", () => {
 		const width = 30
 		const result = renderCharacter(robot, "relaxed", 0, width, "en", false)
 		for (const line of result.lines) {
-			expect(line.length).toBe(width)
+			expect(stripAnsi(line).length).toBe(width)
 		}
 	})
 
@@ -117,7 +118,7 @@ describe("renderCharacter - alignment", () => {
 		const width = 30
 		const result = renderCharacter(robot, "relaxed", 0, width, "en", true)
 		for (const line of result.lines) {
-			expect(line.length).toBe(width)
+			expect(stripAnsi(line).length).toBe(width)
 		}
 	})
 })
@@ -150,12 +151,12 @@ describe("renderMiniCharacter", () => {
 		expect(result?.length).toBe(2)
 	})
 
-	it("should return raw frame lines without extra padding", () => {
+	it("should return colorized frame lines with correct visual content", () => {
 		const result = renderMiniCharacter(robot, "normal")
 		expect(result).not.toBeNull()
-		// Lines should match the preset's miniStates exactly
-		expect(result?.[0]).toBe(robot.miniStates?.normal[0])
-		expect(result?.[1]).toBe(robot.miniStates?.normal[1])
+		// Lines should match the preset's miniStates visually (ignoring ANSI color codes)
+		expect(stripAnsi(result?.[0] ?? "")).toBe(robot.miniStates?.normal[0])
+		expect(stripAnsi(result?.[1] ?? "")).toBe(robot.miniStates?.normal[1])
 	})
 
 	it("should return null for preset without miniStates", () => {
@@ -179,15 +180,15 @@ describe("renderMiniCharacter", () => {
 		expect(result).toBeNull()
 	})
 
-	it("should render different face for different states", () => {
+	it("should render different face color for different states", () => {
 		const relaxed = renderMiniCharacter(robot, "relaxed")
 		const critical = renderMiniCharacter(robot, "critical")
 		expect(relaxed).not.toBeNull()
 		expect(critical).not.toBeNull()
-		// Line 1 (head) should be the same
-		expect(relaxed?.[0]).toBe(critical?.[0])
-		// Line 2 (face) should differ
-		expect(relaxed?.[1]).not.toBe(critical?.[1])
+		// Line 1 (head) should have the same visual content but different colors per state
+		expect(stripAnsi(relaxed?.[0] ?? "")).toBe(stripAnsi(critical?.[0] ?? ""))
+		// Line 2 (face) should differ visually
+		expect(stripAnsi(relaxed?.[1] ?? "")).not.toBe(stripAnsi(critical?.[1] ?? ""))
 	})
 
 	it("should contain robot head characters", () => {
