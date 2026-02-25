@@ -1,5 +1,7 @@
 import { getColorLevel } from "../theme"
-import { colorizeLine, getCharacterColors } from "./colorizer"
+import { colorizeLine, getCharacterColors, getMetallicCharacterColors } from "./colorizer"
+import { getLuminanceMap } from "./metallic"
+import type { ShimmerState } from "./shimmer"
 import type { CharacterPreset, CharacterRenderResult, CharacterState } from "./types"
 
 const SPEECH_BUBBLE_LINES = 3
@@ -38,6 +40,7 @@ export function renderCharacter(
 	language: string,
 	showSpeechBubble: boolean,
 	message?: string,
+	shimmer?: ShimmerState | null,
 ): CharacterRenderResult {
 	const stateAnim = preset.states[state]
 	const safeIndex = frameIndex % stateAnim.frames.length
@@ -51,11 +54,27 @@ export function renderCharacter(
 		lines.push(...bubbleLines)
 	}
 
-	const scheme = getCharacterColors(state, getColorLevel())
+	const colorLevel = getColorLevel()
+	const scheme = getCharacterColors(state, colorLevel)
+	const metallicScheme = getMetallicCharacterColors(state, colorLevel)
+	const luminanceMap = metallicScheme ? getLuminanceMap(preset.name) : undefined
+	const shimmerState = shimmer ?? undefined
+
 	const frameLines = frame ?? []
 	for (let i = 0; i < frameLines.length; i++) {
 		const padded = centerPad(frameLines[i] ?? "", availableWidth)
-		lines.push(colorizeLine(padded, i, scheme, frameLines.length))
+		lines.push(
+			colorizeLine(
+				padded,
+				i,
+				scheme,
+				frameLines.length,
+				metallicScheme,
+				luminanceMap,
+				shimmerState,
+				colorLevel,
+			),
+		)
 	}
 
 	return {
@@ -72,9 +91,26 @@ export function getCharacterHeight(preset: CharacterPreset, showSpeechBubble: bo
 export function renderMiniCharacter(
 	preset: CharacterPreset,
 	state: CharacterState,
+	shimmer?: ShimmerState | null,
 ): string[] | null {
 	if (!preset.miniStates) return null
 	const miniFrame = preset.miniStates[state]
-	const scheme = getCharacterColors(state, getColorLevel())
-	return miniFrame.map((line, i) => colorizeLine(line, i, scheme, miniFrame.length))
+	const colorLevel = getColorLevel()
+	const scheme = getCharacterColors(state, colorLevel)
+	const metallicScheme = getMetallicCharacterColors(state, colorLevel)
+	const luminanceMap = metallicScheme ? getLuminanceMap(preset.name, true) : undefined
+	const shimmerState = shimmer ?? undefined
+
+	return miniFrame.map((line, i) =>
+		colorizeLine(
+			line,
+			i,
+			scheme,
+			miniFrame.length,
+			metallicScheme,
+			luminanceMap,
+			shimmerState,
+			colorLevel,
+		),
+	)
 }
