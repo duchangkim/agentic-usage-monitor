@@ -13,14 +13,14 @@ export interface ShimmerState {
 }
 
 const DEFAULT_CONFIG: ShimmerConfig = {
-	frameIntervalMs: 105,
-	cycleMinMs: 2100,
-	cycleMaxMs: 3500,
+	frameIntervalMs: 35,
+	cycleMinMs: 10000,
+	cycleMaxMs: 20000,
 }
 
 const CRITICAL_CONFIG: Partial<ShimmerConfig> = {
-	cycleMinMs: 1050,
-	cycleMaxMs: 1750,
+	cycleMinMs: 5000,
+	cycleMaxMs: 10000,
 }
 
 const GRID_ROWS = 4
