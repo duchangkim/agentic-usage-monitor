@@ -123,29 +123,21 @@ function isFaceLine(lineIndex: number, totalLines: number): boolean {
 	return false
 }
 
-function findContentBounds(line: string): { start: number; end: number } {
-	let start = 0
-	while (start < line.length && line[start] === " ") start++
-	let end = line.length - 1
-	while (end >= start && line[end] === " ") end--
-	return { start, end: end + 1 }
-}
-
 function resolveTier(
 	lineIndex: number,
 	colIndex: number,
-	contentStart: number,
+	leftPad: number,
 	luminanceMap: LuminanceTier[][],
 	shimmer: ShimmerState,
 ): LuminanceTier {
 	const mapRow = luminanceMap[lineIndex]
 	if (!mapRow) return "base"
 	const mapCols = mapRow.length
-	const contentCol = colIndex - contentStart
-	if (contentCol < 0 || contentCol >= mapCols) return "base"
-	const intensity = getShimmerIntensity(lineIndex, contentCol, shimmer)
+	const mapCol = colIndex - leftPad
+	if (mapCol < 0 || mapCol >= mapCols) return "base"
+	const intensity = getShimmerIntensity(lineIndex, mapCol, shimmer)
 	if (intensity > 0) return "specular"
-	return mapRow[contentCol] ?? "base"
+	return mapRow[mapCol] ?? "base"
 }
 
 function resolveMetallicColor(
@@ -168,13 +160,14 @@ export function colorizeLineMetallic(
 	shimmer: ShimmerState,
 	colorLevel: ColorLevel,
 ): string {
-	const { start: contentStart } = findContentBounds(line)
+	const mapCols = luminanceMap[0]?.length ?? 0
+	const leftPad = Math.floor((line.length - mapCols) / 2)
 	let result = ""
 	let currentColor = ""
 	let colIndex = 0
 
 	for (const ch of line) {
-		const tier = resolveTier(lineIndex, colIndex, contentStart, luminanceMap, shimmer)
+		const tier = resolveTier(lineIndex, colIndex, leftPad, luminanceMap, shimmer)
 		const target = resolveMetallicColor(ch, tier, scheme, colorLevel)
 
 		if (target !== currentColor) {

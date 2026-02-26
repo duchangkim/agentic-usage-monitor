@@ -8,7 +8,7 @@ export interface ShimmerConfig {
 
 export interface ShimmerState {
 	active: boolean
-	position: { row: number; col: number } | null
+	diagonalStep: number | null
 	radius: number
 }
 
@@ -31,7 +31,7 @@ export class ShimmerAnimator {
 	private callback: () => void
 	private config: ShimmerConfig
 	private _active = false
-	private _position: { row: number; col: number } | null = null
+	private _diagonalStep: number | null = null
 	private sweepStep = 0
 	private sweepTotal: number
 	private sweepTimer: ReturnType<typeof setTimeout> | null = null
@@ -40,13 +40,13 @@ export class ShimmerAnimator {
 	constructor(callback: () => void, config?: Partial<ShimmerConfig>) {
 		this.callback = callback
 		this.config = { ...DEFAULT_CONFIG, ...config }
-		this.sweepTotal = GRID_ROWS + GRID_COLS - 1
+		this.sweepTotal = GRID_ROWS + GRID_COLS - 2
 	}
 
 	get state(): ShimmerState {
 		return {
 			active: this._active,
-			position: this._position,
+			diagonalStep: this._diagonalStep,
 			radius: SHIMMER_RADIUS,
 		}
 	}
@@ -59,7 +59,7 @@ export class ShimmerAnimator {
 
 	stop(): void {
 		this._active = false
-		this._position = null
+		this._diagonalStep = null
 		if (this.sweepTimer) {
 			clearTimeout(this.sweepTimer)
 			this.sweepTimer = null
@@ -98,18 +98,15 @@ export class ShimmerAnimator {
 
 	private advanceSweep(): void {
 		if (!this._active) return
-		if (this.sweepStep >= this.sweepTotal) {
-			this._position = null
+		if (this.sweepStep > this.sweepTotal) {
+			this._diagonalStep = null
 			this.callback()
 			this.scheduleCycle()
 			return
 		}
-		// Diagonal sweep: top-right → bottom-left
-		// step k: cells where (row + (GRID_COLS - 1 - col)) === k
-		const k = this.sweepStep
-		const col = Math.max(0, GRID_COLS - 1 - k)
-		const row = Math.max(0, k - (GRID_COLS - 1))
-		this._position = { row, col }
+		// Diagonal sweep: top-left → bottom-right
+		// wavefront along r+c = diagonalStep
+		this._diagonalStep = this.sweepStep
 		this.sweepStep++
 		this.callback()
 		this.sweepTimer = setTimeout(() => this.advanceSweep(), this.config.frameIntervalMs)
@@ -117,10 +114,8 @@ export class ShimmerAnimator {
 }
 
 export function getShimmerIntensity(row: number, col: number, shimmer: ShimmerState): number {
-	if (!shimmer.active || !shimmer.position) return 0
-	const dr = Math.abs(row - shimmer.position.row)
-	const dc = Math.abs(col - shimmer.position.col)
-	const dist = Math.max(dr, dc)
+	if (!shimmer.active || shimmer.diagonalStep === null) return 0
+	const dist = Math.abs(row + col - shimmer.diagonalStep)
 	if (dist > shimmer.radius) return 0
 	return 1 - dist / (shimmer.radius + 1)
 }

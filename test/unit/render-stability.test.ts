@@ -16,8 +16,8 @@ function requirePreset(name: string): CharacterPreset {
 const robot = requirePreset("robot")
 const WIDTH = 30
 
-const noShimmer: ShimmerState = { active: false, position: null, radius: 2 }
-const activeShimmer: ShimmerState = { active: true, position: { row: 1, col: 5 }, radius: 2 }
+const noShimmer: ShimmerState = { active: false, diagonalStep: null, radius: 2 }
+const activeShimmer: ShimmerState = { active: true, diagonalStep: 6, radius: 2 }
 
 describe("renderCharacter - output dimensional stability", () => {
 	it("produces stable line count with/without shimmer", () => {
@@ -61,14 +61,12 @@ describe("renderCharacter - output dimensional stability", () => {
 		const baseLineCount = baseline.lines.length
 		const baseWidths = baseline.lines.map((l) => stripAnsi(l).length)
 
-		for (let row = 0; row < 4; row++) {
-			for (let col = 0; col < 11; col++) {
-				const shimmer: ShimmerState = { active: true, position: { row, col }, radius: 2 }
-				const result = renderCharacter(robot, "normal", 0, WIDTH, "en", true, "test", shimmer)
-				expect(result.lines.length).toBe(baseLineCount)
-				for (let i = 0; i < result.lines.length; i++) {
-					expect(stripAnsi(result.lines[i]).length).toBe(baseWidths[i])
-				}
+		for (let step = 0; step <= 4 + 11 - 2; step++) {
+			const shimmer: ShimmerState = { active: true, diagonalStep: step, radius: 2 }
+			const result = renderCharacter(robot, "normal", 0, WIDTH, "en", true, "test", shimmer)
+			expect(result.lines.length).toBe(baseLineCount)
+			for (let i = 0; i < result.lines.length; i++) {
+				expect(stripAnsi(result.lines[i]).length).toBe(baseWidths[i])
 			}
 		}
 	})

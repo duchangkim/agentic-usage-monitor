@@ -7,7 +7,7 @@ describe("ShimmerAnimator", () => {
 		const animator = new ShimmerAnimator(() => {})
 		const state = animator.state
 		expect(state.active).toBe(false)
-		expect(state.position).toBeNull()
+		expect(state.diagonalStep).toBeNull()
 	})
 
 	it("start() activates shimmer", () => {
@@ -50,17 +50,19 @@ describe("ShimmerAnimator", () => {
 
 describe("getShimmerIntensity", () => {
 	it("returns 0 when shimmer is inactive", () => {
-		const state: ShimmerState = { active: false, position: null, radius: 2 }
+		const state: ShimmerState = { active: false, diagonalStep: null, radius: 2 }
 		expect(getShimmerIntensity(1, 1, state)).toBe(0)
 	})
 
-	it("returns > 0 near shimmer position", () => {
-		const state: ShimmerState = { active: true, position: { row: 1, col: 1 }, radius: 2 }
+	it("returns > 0 near diagonal wavefront", () => {
+		// diagonalStep=3, cell (1,2) → r+c=3, dist=0 → max intensity
+		const state: ShimmerState = { active: true, diagonalStep: 3, radius: 2 }
 		expect(getShimmerIntensity(1, 2, state)).toBeGreaterThan(0)
 	})
 
-	it("returns 0 far from shimmer position", () => {
-		const state: ShimmerState = { active: true, position: { row: 0, col: 0 }, radius: 2 }
+	it("returns 0 far from diagonal wavefront", () => {
+		// diagonalStep=0, cell (10,10) → r+c=20, dist=20 > radius
+		const state: ShimmerState = { active: true, diagonalStep: 0, radius: 2 }
 		expect(getShimmerIntensity(10, 10, state)).toBe(0)
 	})
 })

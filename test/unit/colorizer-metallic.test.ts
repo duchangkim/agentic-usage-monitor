@@ -30,7 +30,7 @@ describe("getMetallicCharacterColors", () => {
 })
 
 describe("colorizeLineMetallic", () => {
-	const noShimmer: ShimmerState = { active: false, position: null, radius: 2 }
+	const noShimmer: ShimmerState = { active: false, diagonalStep: null, radius: 2 }
 
 	it("applies per-cell coloring based on luminance map", () => {
 		const scheme = getMetallicCharacterColors("normal", "truecolor")
@@ -59,7 +59,7 @@ describe("colorizeLineMetallic", () => {
 		if (!scheme) throw new Error("scheme should not be null for truecolor")
 
 		const line = "  ▗▟███▙▖  "
-		const activeShimmer: ShimmerState = { active: true, position: { row: 0, col: 4 }, radius: 2 }
+		const activeShimmer: ShimmerState = { active: true, diagonalStep: 4, radius: 2 }
 
 		const withoutShimmer = colorizeLineMetallic(
 			line,
@@ -113,7 +113,7 @@ describe("colorizeLine - metallic integration", () => {
 		const flatScheme = getCharacterColors("normal", "truecolor")
 
 		const line = "  ▗▟███▙▖  "
-		const noShimmer: ShimmerState = { active: false, position: null, radius: 2 }
+		const noShimmer: ShimmerState = { active: false, diagonalStep: null, radius: 2 }
 
 		const metallic = colorizeLine(
 			line,
