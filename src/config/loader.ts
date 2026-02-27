@@ -20,6 +20,10 @@ export interface LoadConfigResult {
 }
 
 function getConfigPath(): string {
+	if (process.platform === "win32") {
+		const appData = process.env.APPDATA || join(homedir(), "AppData", "Roaming")
+		return join(appData, CONFIG_DIR_NAME, CONFIG_FILE_NAME)
+	}
 	return join(homedir(), ".config", CONFIG_DIR_NAME, CONFIG_FILE_NAME)
 }
 
@@ -107,6 +111,10 @@ export function loadConfig(customPath?: string): LoadConfigResult {
 }
 
 export function getConfigDir(): string {
+	if (process.platform === "win32") {
+		const appData = process.env.APPDATA || join(homedir(), "AppData", "Roaming")
+		return join(appData, CONFIG_DIR_NAME)
+	}
 	return join(homedir(), ".config", CONFIG_DIR_NAME)
 }
 

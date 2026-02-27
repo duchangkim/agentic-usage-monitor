@@ -43,6 +43,10 @@ export type LoadAgentConfigResult =
 	| { success: false; error: string }
 
 export function getAgentConfigPath(): string {
+	if (process.platform === "win32") {
+		const appData = process.env.APPDATA || join(homedir(), "AppData", "Roaming")
+		return join(appData, "usage-monitor", "agents.json")
+	}
 	return join(homedir(), ".config", "usage-monitor", "agents.json")
 }
 

@@ -119,7 +119,11 @@ function parseLaunchArgs(args: string[]): LaunchArgs {
 
 function commandExists(cmd: string): boolean {
 	try {
-		execSync(`command -v ${cmd}`, { stdio: "ignore" })
+		if (process.platform === "win32") {
+			execSync(`where ${cmd}`, { stdio: "ignore" })
+		} else {
+			execSync(`command -v ${cmd}`, { stdio: "ignore" })
+		}
 		return true
 	} catch {
 		return false
@@ -171,6 +175,17 @@ export function runLaunch(args: string[]): void {
 	if (parsed.help) {
 		printUsage()
 		return
+	}
+
+	if (process.platform === "win32") {
+		console.error("Error: The 'launch' command uses tmux, which is not available on Windows.")
+		console.error("")
+		console.error("Alternatives:")
+		console.error("  1. Run 'usage-monitor --once' to check rate limits")
+		console.error("  2. Run 'usage-monitor' in a separate terminal window")
+		console.error("  3. Use WSL (Windows Subsystem for Linux) for full tmux support")
+		console.error("")
+		process.exit(1)
 	}
 
 	if (parsed.command.length === 0) {

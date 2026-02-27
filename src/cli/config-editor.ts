@@ -42,6 +42,7 @@ export function createDefaultConfigFile(configPath: string): void {
 
 export function getEditorCommand(platform: string): string {
 	if (platform === "darwin") return "open"
+	if (platform === "win32") return "start"
 	return "xdg-open"
 }
 
@@ -50,15 +51,16 @@ export type OpenResult = { success: true } | { success: false; error: string }
 export function openConfigInEditor(configPath: string): OpenResult {
 	createDefaultConfigFile(configPath)
 
-	const cmd = getEditorCommand(process.platform)
+	const platform = process.platform
+	const cmd = getEditorCommand(platform)
 
 	try {
-		exec(`${cmd} ${JSON.stringify(configPath)}`, (error) => {
-			if (error) {
-				// Non-blocking: error is silently ignored since we can't
-				// show it synchronously. The user will see the file didn't open.
-			}
-		})
+		if (platform === "win32") {
+			// "start" is a cmd.exe built-in; first quoted arg is treated as window title
+			exec(`cmd /c start "" ${JSON.stringify(configPath)}`, () => {})
+		} else {
+			exec(`${cmd} ${JSON.stringify(configPath)}`, () => {})
+		}
 		return { success: true }
 	} catch {
 		return { success: false, error: `Failed to open editor with '${cmd}'` }

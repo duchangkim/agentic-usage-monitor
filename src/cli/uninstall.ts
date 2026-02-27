@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process"
 import { existsSync, unlinkSync } from "node:fs"
+import { join } from "node:path"
 
 function isBinaryInstall(): boolean {
 	const execPath = process.execPath
@@ -66,6 +67,9 @@ export async function runUninstall(): Promise<void> {
 		// Check for config files
 		const homeDir = process.env.HOME || process.env.USERPROFILE || ""
 		const configPaths = [`${homeDir}/.config/usage-monitor`, `${homeDir}/.usage-monitor.yaml`]
+		if (process.platform === "win32" && process.env.APPDATA) {
+			configPaths.push(join(process.env.APPDATA, "usage-monitor"))
+		}
 
 		const existingConfigs = configPaths.filter((p) => existsSync(p))
 		if (existingConfigs.length > 0) {
@@ -78,7 +82,9 @@ export async function runUninstall(): Promise<void> {
 
 		// Check if another usage-monitor remains in PATH
 		try {
-			const remaining = execSync("which usage-monitor 2>/dev/null", {
+			const findCmd =
+				process.platform === "win32" ? "where usage-monitor" : "which usage-monitor 2>/dev/null"
+			const remaining = execSync(findCmd, {
 				encoding: "utf-8",
 			}).trim()
 			if (remaining) {

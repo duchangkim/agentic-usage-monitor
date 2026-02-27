@@ -90,6 +90,11 @@ describe("getEditorCommand", () => {
 		expect(cmd).toBe("open")
 	})
 
+	it("should return 'start' on win32", () => {
+		const cmd = getEditorCommand("win32")
+		expect(cmd).toBe("start")
+	})
+
 	it("should return 'xdg-open' on linux", () => {
 		const cmd = getEditorCommand("linux")
 		expect(cmd).toBe("xdg-open")

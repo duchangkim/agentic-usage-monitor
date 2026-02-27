@@ -13,7 +13,14 @@ interface PlatformInfo {
 }
 
 function detectPlatform(): PlatformInfo {
-	const os = process.platform === "darwin" ? "darwin" : "linux"
+	let os: string
+	if (process.platform === "darwin") {
+		os = "darwin"
+	} else if (process.platform === "win32") {
+		os = "windows"
+	} else {
+		os = "linux"
+	}
 	const arch = process.arch === "x64" ? "x64" : "arm64"
 	return { os, arch, platform: `${os}-${arch}` }
 }
@@ -66,9 +73,9 @@ async function verifyChecksum(
 		if (!response.ok) return true // Skip verification if checksums unavailable
 
 		const checksumText = await response.text()
-		const expectedLine = checksumText
-			.split("\n")
-			.find((line) => line.endsWith(`${BINARY_NAME}-${platform}`))
+		const ext = platform.startsWith("windows") ? ".exe" : ""
+		const binaryFileName = `${BINARY_NAME}-${platform}${ext}`
+		const expectedLine = checksumText.split("\n").find((line) => line.endsWith(binaryFileName))
 		if (!expectedLine) return true // Skip if no matching checksum found
 
 		const expectedHash = expectedLine.split(/\s+/)[0]
@@ -84,6 +91,55 @@ async function verifyChecksum(
 		return expectedHash === actualHash
 	} catch {
 		return true // Skip verification on error
+	}
+}
+
+function replaceBinary(tmpFile: string, os: string): void {
+	const currentPath = process.execPath
+	const backupPath = `${currentPath}.bak`
+
+	if (process.platform !== "win32") {
+		chmodSync(tmpFile, 0o755)
+	}
+
+	// Rename current binary to backup, move new binary in place
+	if (existsSync(backupPath)) {
+		try {
+			unlinkSync(backupPath)
+		} catch {
+			// On Windows, previous .bak may still be locked
+		}
+	}
+	renameSync(currentPath, backupPath)
+	renameSync(tmpFile, currentPath)
+	if (process.platform !== "win32") {
+		unlinkSync(backupPath)
+	} else {
+		// On Windows, the .bak file may be locked by the running process;
+		// it will be cleaned up on the next update
+		try {
+			unlinkSync(backupPath)
+		} catch {
+			// Expected on Windows — ignore
+		}
+	}
+
+	// macOS: remove quarantine and ad-hoc codesign
+	if (os === "darwin") {
+		try {
+			execSync(`xattr -d com.apple.quarantine ${JSON.stringify(currentPath)}`, {
+				stdio: "ignore",
+			})
+		} catch {
+			// Ignore
+		}
+		try {
+			execSync(`codesign --force --sign - ${JSON.stringify(currentPath)}`, {
+				stdio: "ignore",
+			})
+		} catch {
+			// Non-fatal
+		}
 	}
 }
 
@@ -124,7 +180,8 @@ export async function runUpdate(): Promise<void> {
 	console.log(`  Updating ${currentVersion} → ${latestVersion}...`)
 
 	const { platform, os } = detectPlatform()
-	const downloadUrl = `https://github.com/${REPO}/releases/download/${latestVersion}/${BINARY_NAME}-${platform}`
+	const ext = os === "windows" ? ".exe" : ""
+	const downloadUrl = `https://github.com/${REPO}/releases/download/${latestVersion}/${BINARY_NAME}-${platform}${ext}`
 
 	const tmpDir = tmpdir()
 	const tmpFile = join(tmpDir, `${BINARY_NAME}-update-${Date.now()}`)
@@ -142,37 +199,7 @@ export async function runUpdate(): Promise<void> {
 		}
 		console.log("  Checksum verified")
 
-		// Replace the current binary
-		const currentPath = process.execPath
-		const backupPath = `${currentPath}.bak`
-
-		chmodSync(tmpFile, 0o755)
-
-		// Rename current binary to backup, move new binary in place
-		if (existsSync(backupPath)) {
-			unlinkSync(backupPath)
-		}
-		renameSync(currentPath, backupPath)
-		renameSync(tmpFile, currentPath)
-		unlinkSync(backupPath)
-
-		// macOS: remove quarantine and ad-hoc codesign
-		if (os === "darwin") {
-			try {
-				execSync(`xattr -d com.apple.quarantine ${JSON.stringify(currentPath)}`, {
-					stdio: "ignore",
-				})
-			} catch {
-				// Ignore
-			}
-			try {
-				execSync(`codesign --force --sign - ${JSON.stringify(currentPath)}`, {
-					stdio: "ignore",
-				})
-			} catch {
-				// Non-fatal
-			}
-		}
+		replaceBinary(tmpFile, os)
 
 		console.log("")
 		console.log(`  Updated to ${latestVersion}!`)

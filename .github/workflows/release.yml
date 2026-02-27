@@ -29,6 +29,10 @@ jobs:
             target: bun-linux-arm64
             suffix: linux-arm64
             can-smoke-test: false
+          - os: windows-latest
+            target: bun-windows-x64
+            suffix: windows-x64.exe
+            can-smoke-test: true
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -36,21 +40,37 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
 
-      - name: Build binary
+      - name: Build binary (Unix)
+        if: runner.os != 'Windows'
         run: |
           mkdir -p dist
           VERSION=$(node -p "require('./package.json').version")
           bun build --compile --minify --define "__PKG_VERSION__=\"$VERSION\"" --target=${{ matrix.target }} --outfile dist/usage-monitor-${{ matrix.suffix }} src/cli/index.ts
 
+      - name: Build binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $VERSION = node -p "require('./package.json').version"
+          bun build --compile --minify --define "__PKG_VERSION__=`"$VERSION`"" --target=${{ matrix.target }} --outfile dist/usage-monitor-${{ matrix.suffix }} src/cli/index.ts
+
       - name: Ad-hoc codesign (macOS)
         if: runner.os == 'macOS'
         run: codesign --force --sign - dist/usage-monitor-${{ matrix.suffix }}
 
-      - name: Smoke test
-        if: matrix.can-smoke-test
+      - name: Smoke test (Unix)
+        if: matrix.can-smoke-test && runner.os != 'Windows'
         run: |
           ./dist/usage-monitor-${{ matrix.suffix }} --version
           ./dist/usage-monitor-${{ matrix.suffix }} --help
+
+      - name: Smoke test (Windows)
+        if: matrix.can-smoke-test && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\dist\usage-monitor-${{ matrix.suffix }} --version
+          .\dist\usage-monitor-${{ matrix.suffix }} --help
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

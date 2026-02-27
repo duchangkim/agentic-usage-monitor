@@ -16,6 +16,7 @@ const TARGETS = [
 	{ target: "bun-darwin-x64", suffix: "darwin-x64" },
 	{ target: "bun-linux-x64", suffix: "linux-x64" },
 	{ target: "bun-linux-arm64", suffix: "linux-arm64" },
+	{ target: "bun-windows-x64", suffix: "windows-x64.exe" },
 ] as const
 
 const ENTRY = "src/cli/index.ts"

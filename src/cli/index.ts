@@ -147,7 +147,7 @@ ${text("AUTHENTICATION:", colors.fg.heading)}
   Use --source to select a specific credential source.
 
 ${text("CONFIGURATION:", colors.fg.heading)}
-  Config file: ~/.config/usage-monitor/config.json
+  Config file: ${process.platform === "win32" ? "%APPDATA%\\usage-monitor\\config.json" : "~/.config/usage-monitor/config.json"}
 
 ${text("ENVIRONMENT VARIABLES:", colors.fg.heading)}
   USAGE_MONITOR_REFRESH_INTERVAL   Refresh interval in seconds
@@ -276,6 +276,14 @@ async function handleSubcommand(): Promise<void> {
 		const agent = getAgent(agents, firstArg)
 
 		if (agent) {
+			if (process.platform === "win32") {
+				console.error(`Agent '${firstArg}' requires tmux, which is not available on Windows.`)
+				console.error("")
+				console.error("Run the agent and monitor separately:")
+				console.error(`  ${agent.command}      (in one terminal)`)
+				console.error("  usage-monitor          (in another terminal)")
+				process.exit(1)
+			}
 			const { runLaunch } = await import("./launch")
 			const agentArgs = process.argv.slice(3)
 			const launchArgs = [

@@ -76,3 +76,16 @@ jobs:
       - run: bun run build:binary
       - name: Binary E2E tests (macOS)
         run: bun test test/binary-e2e
+
+  test-windows:
+    runs-on: windows-latest
+    needs: [typecheck, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build
+      - name: Unit tests
+        run: bun test test/unit
+      - name: CLI smoke test
+        run: bun run src/cli/index.ts --help

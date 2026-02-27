@@ -275,6 +275,7 @@ describe("Compiled Binary Uninstall", () => {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const checkTmuxAvailable = async (): Promise<boolean> => {
+	if (process.platform === "win32") return false
 	try {
 		const result = await $`which tmux`.quiet()
 		return result.exitCode === 0
