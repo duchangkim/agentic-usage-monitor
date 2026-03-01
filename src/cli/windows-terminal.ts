@@ -1,9 +1,7 @@
 import { execSync, spawnSync } from "node:child_process"
+import type { Position } from "./launch"
 
-type Position = "left" | "right" | "top" | "bottom"
-
-const HORIZONTAL_PANE_FRACTION = 0.2
-const VERTICAL_PANE_FRACTION = 0.2
+const MONITOR_PANE_FRACTION = 0.2
 
 export interface WtLaunchPlan {
 	wtArgs: string[]
@@ -42,11 +40,10 @@ export function buildWtLaunchPlan(
 	const isRoleSwap = position === "top" || position === "left"
 	const isHorizontal = position === "top" || position === "bottom"
 	const splitFlag = isHorizontal ? "-H" : "-V"
-	const fraction = isHorizontal ? HORIZONTAL_PANE_FRACTION : VERTICAL_PANE_FRACTION
 
 	const splitPaneCmd = isRoleSwap ? mainCmd : monitorCmd
 	const currentPaneCmd = isRoleSwap ? monitorCmd : mainCmd
-	const size = isRoleSwap ? 1 - fraction : fraction
+	const size = isRoleSwap ? 1 - MONITOR_PANE_FRACTION : MONITOR_PANE_FRACTION
 
 	const wtArgs = ["-w", "0", "sp", splitFlag, "--size", String(size), splitPaneCmd]
 
@@ -76,17 +73,16 @@ export function launchWithWindowsTerminal(
 	console.log(`  Monitor: ${position}`)
 	console.log("")
 
-	// Spawn wt.exe to create the split pane
+	// Both panes need USAGE_MONITOR_SESSION so the monitor can identify its session
 	const env = { ...process.env, USAGE_MONITOR_SESSION: sessionName }
+
+	// Spawn wt.exe to create the split pane
 	spawnSync("wt.exe", plan.wtArgs, { stdio: "ignore", env })
 
 	// Run the current pane command (inherits stdio)
 	const cmdParts = plan.currentPaneCmd.split(" ")
-	const currentEnv = plan.monitorInCurrentPane
-		? { ...process.env, USAGE_MONITOR_SESSION: sessionName }
-		: process.env
 	const cmd = cmdParts[0]
 	if (cmd) {
-		spawnSync(cmd, cmdParts.slice(1), { stdio: "inherit", env: currentEnv })
+		spawnSync(cmd, cmdParts.slice(1), { stdio: "inherit", env })
 	}
 }
