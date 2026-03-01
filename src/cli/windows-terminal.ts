@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process"
+import { execSync, spawnSync } from "node:child_process"
 
 type Position = "left" | "right" | "top" | "bottom"
 
@@ -54,5 +54,39 @@ export function buildWtLaunchPlan(
 		wtArgs,
 		currentPaneCmd,
 		monitorInCurrentPane: isRoleSwap,
+	}
+}
+
+export function launchWithWindowsTerminal(
+	mainCmd: string,
+	monitorCmd: string,
+	position: Position,
+	sessionName: string,
+): void {
+	if (!isInsideWindowsTerminal()) {
+		console.error("Warning: Not running inside Windows Terminal (WT_SESSION not set).")
+		console.error("The split pane will open in a new window instead of the current one.")
+		console.error("")
+	}
+
+	const plan = buildWtLaunchPlan(mainCmd, monitorCmd, position)
+
+	console.log("Starting with Windows Terminal pane split")
+	console.log(`  Command: ${mainCmd}`)
+	console.log(`  Monitor: ${position}`)
+	console.log("")
+
+	// Spawn wt.exe to create the split pane
+	const env = { ...process.env, USAGE_MONITOR_SESSION: sessionName }
+	spawnSync("wt.exe", plan.wtArgs, { stdio: "ignore", env })
+
+	// Run the current pane command (inherits stdio)
+	const cmdParts = plan.currentPaneCmd.split(" ")
+	const currentEnv = plan.monitorInCurrentPane
+		? { ...process.env, USAGE_MONITOR_SESSION: sessionName }
+		: process.env
+	const cmd = cmdParts[0]
+	if (cmd) {
+		spawnSync(cmd, cmdParts.slice(1), { stdio: "inherit", env: currentEnv })
 	}
 }

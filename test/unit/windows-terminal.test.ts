@@ -105,7 +105,8 @@ describe("buildWtLaunchPlan", () => {
 		const plan = buildWtLaunchPlan(mainCmd, monitorCmd, "bottom")
 		const sizeIdx = plan.wtArgs.indexOf("--size")
 		expect(sizeIdx).toBeGreaterThan(-1)
-		const sizeValue = Number.parseFloat(plan.wtArgs[sizeIdx + 1]!)
+		const sizeStr = plan.wtArgs[sizeIdx + 1] ?? ""
+		const sizeValue = Number.parseFloat(sizeStr)
 		expect(sizeValue).toBeGreaterThan(0)
 		expect(sizeValue).toBeLessThan(1)
 	})

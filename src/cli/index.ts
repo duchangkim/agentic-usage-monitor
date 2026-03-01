@@ -276,14 +276,6 @@ async function handleSubcommand(): Promise<void> {
 		const agent = getAgent(agents, firstArg)
 
 		if (agent) {
-			if (process.platform === "win32") {
-				console.error(`Agent '${firstArg}' requires tmux, which is not available on Windows.`)
-				console.error("")
-				console.error("Run the agent and monitor separately:")
-				console.error(`  ${agent.command}      (in one terminal)`)
-				console.error("  usage-monitor          (in another terminal)")
-				process.exit(1)
-			}
 			const { runLaunch } = await import("./launch")
 			const agentArgs = process.argv.slice(3)
 			const launchArgs = [

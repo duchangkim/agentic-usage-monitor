@@ -1,5 +1,6 @@
 import { execSync, spawnSync } from "node:child_process"
 import type { CredentialSource } from "../data/oauth-credentials"
+import { launchWithWindowsTerminal, windowsTerminalAvailable } from "./windows-terminal"
 
 const HORIZONTAL_PANE_SIZE = 20
 const VERTICAL_PANE_LINES = 3
@@ -50,7 +51,8 @@ ENVIRONMENT:
     USAGE_MONITOR_SESSION   default session name
 
 REQUIREMENTS:
-    - tmux (brew install tmux)`)
+    - tmux (brew install tmux)
+    - Windows: Windows Terminal (wt.exe) for pane splitting`)
 }
 
 function parseLaunchArgs(args: string[]): LaunchArgs {
@@ -182,22 +184,36 @@ export function runLaunch(args: string[]): void {
 		return
 	}
 
-	if (process.platform === "win32") {
-		console.error("Error: The 'launch' command uses tmux, which is not available on Windows.")
-		console.error("")
-		console.error("Alternatives:")
-		console.error("  1. Run 'usage-monitor --once' to check rate limits")
-		console.error("  2. Run 'usage-monitor' in a separate terminal window")
-		console.error("  3. Use WSL (Windows Subsystem for Linux) for full tmux support")
-		console.error("")
-		process.exit(1)
-	}
-
 	if (parsed.command.length === 0) {
 		console.error("Error: No command specified.")
 		console.error("")
 		printUsage()
 		process.exit(1)
+	}
+
+	if (process.platform === "win32") {
+		if (!windowsTerminalAvailable()) {
+			console.error("Error: Windows Terminal (wt.exe) is required but not found.")
+			console.error("")
+			console.error("Alternatives:")
+			console.error("  1. Install Windows Terminal from the Microsoft Store")
+			console.error("  2. Run 'usage-monitor' in a separate terminal window")
+			console.error("  3. Use WSL (Windows Subsystem for Linux) for full tmux support")
+			console.error("")
+			process.exit(1)
+		}
+
+		const mainCmd = parsed.command.join(" ")
+		const monitorCmd = getMonitorCmd()
+		const fullMonitorCmd = buildMonitorCmd(
+			monitorCmd,
+			parsed.sessionName,
+			parsed.position,
+			parsed.source,
+			"win32",
+		)
+		launchWithWindowsTerminal(mainCmd, fullMonitorCmd, parsed.position, parsed.sessionName)
+		return
 	}
 
 	if (!commandExists("tmux")) {
