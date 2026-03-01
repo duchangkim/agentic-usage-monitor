@@ -4,7 +4,7 @@ import type { CredentialSource } from "../data/oauth-credentials"
 const HORIZONTAL_PANE_SIZE = 20
 const VERTICAL_PANE_LINES = 3
 
-type Position = "left" | "right" | "top" | "bottom"
+export type Position = "left" | "right" | "top" | "bottom"
 
 interface LaunchArgs {
 	position: Position
@@ -155,11 +155,12 @@ function getTerminalSize(): { cols: number; rows: number } {
 	return { cols, rows }
 }
 
-function buildMonitorCmd(
+export function buildMonitorCmd(
 	monitorCmd: string,
 	sessionName: string,
 	position: Position,
 	source?: CredentialSource,
+	_platform: string = process.platform,
 ): string {
 	let cmd = position === "top" || position === "bottom" ? `${monitorCmd} --compact` : monitorCmd
 	if (source) {
