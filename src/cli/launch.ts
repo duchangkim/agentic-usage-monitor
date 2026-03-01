@@ -160,11 +160,15 @@ export function buildMonitorCmd(
 	sessionName: string,
 	position: Position,
 	source?: CredentialSource,
-	_platform: string = process.platform,
+	platform: string = process.platform,
 ): string {
 	let cmd = position === "top" || position === "bottom" ? `${monitorCmd} --compact` : monitorCmd
 	if (source) {
 		cmd = `${cmd} --source ${source}`
+	}
+	// On Windows, env vars are passed via spawn options, not inline shell syntax
+	if (platform === "win32") {
+		return cmd
 	}
 	// Pass session name via environment variable so the monitor process can kill the session on 'q'
 	return `USAGE_MONITOR_SESSION=${JSON.stringify(sessionName)} ${cmd}`
