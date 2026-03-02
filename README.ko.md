@@ -37,7 +37,12 @@ q:exit  e:config  E:apply
 brew install duchangkim/tap/usage-monitor
 ```
 
-### 독립 실행 파일 (macOS / Linux)
+> 이전에 독립 실행형 바이너리를 통해 설치했다면, 충돌을 방지하기 위해 먼저 제거하세요:
+> ```bash
+> usage-monitor uninstall
+> ```
+
+### 독립 실행형 바이너리 (macOS / Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/duchangkim/agentic-usage-monitor/main/install.sh | sh
@@ -75,17 +80,17 @@ usage-monitor claude     # Claude Code + claude-code credentials
 usage-monitor opencode   # OpenCode + opencode credentials
 ```
 
-### 임의 명령과 함께 실행
+### 임의의 명령과 함께 실행
 
 ```bash
-usage-monitor launch -- opencode              # 모니터가 오른쪽 (기본값)
-usage-monitor launch -t -- opencode           # 모니터가 위쪽
-usage-monitor launch -b -- claude             # 모니터가 아래쪽
-usage-monitor launch -l -- nvim .             # 모니터가 왼쪽
+usage-monitor launch -- opencode              # 오른쪽에 모니터 (기본값)
+usage-monitor launch -t -- opencode           # 위쪽에 모니터
+usage-monitor launch -b -- claude             # 아래쪽에 모니터
+usage-monitor launch -l -- nvim .             # 왼쪽에 모니터
 usage-monitor launch -s myproject -- opencode # 명명된 세션
 ```
 
-### 독립 실행 모니터
+### 독립 실행형 모니터
 
 ```bash
 usage-monitor                     # 자동 새로고침 모드 (30초)
@@ -96,7 +101,7 @@ usage-monitor --source opencode   # 특정 자격 증명 소스
 
 ### 옵션
 
-| Flag | Description |
+| Flag | 설명 |
 | --- | --- |
 | `--once`, `-1` | 한 번만 사용량을 표시하고 종료 |
 | `--compact` | 최소 표시 모드 |
@@ -132,7 +137,7 @@ bun run cli --once   # 로컬 실행
 bun test                  # 모든 테스트
 bun run test:e2e          # E2E 테스트
 bun run test:e2e:docker   # Docker에서 E2E 테스트 (격리된 환경)
-bun run mock-server       # 모의 OAuth 서버 시작
+bun run mock-server       # mock OAuth 서버 시작
 ```
 
 ## 라이선스
