@@ -31,13 +31,19 @@ q:exit  e:config  E:apply
 
 ## 설치
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install duchangkim/tap/usage-monitor
+```
+
 ### 독립 실행 파일 (macOS / Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/duchangkim/agentic-usage-monitor/main/install.sh | sh
 ```
 
-운영 체제/아키텍처를 감지하고 `~/.local/bin/`에 설치하며 체크섬을 확인합니다.
+운영 체제/아키텍처를 감지하고 `~/.local/bin/`에 설치하며 체크섬을 검증합니다.
 
 ### Windows (실험적)
 
@@ -72,18 +78,18 @@ usage-monitor opencode   # OpenCode + opencode credentials
 ### 임의 명령과 함께 실행
 
 ```bash
-usage-monitor launch -- opencode              # 오른쪽에 모니터 (기본값)
-usage-monitor launch -t -- opencode           # 위쪽에 모니터
-usage-monitor launch -b -- claude             # 아래쪽에 모니터
-usage-monitor launch -l -- nvim .             # 왼쪽에 모니터
-usage-monitor launch -s myproject -- opencode # 이름 지정 세션
+usage-monitor launch -- opencode              # 모니터가 오른쪽 (기본값)
+usage-monitor launch -t -- opencode           # 모니터가 위쪽
+usage-monitor launch -b -- claude             # 모니터가 아래쪽
+usage-monitor launch -l -- nvim .             # 모니터가 왼쪽
+usage-monitor launch -s myproject -- opencode # 명명된 세션
 ```
 
 ### 독립 실행 모니터
 
 ```bash
 usage-monitor                     # 자동 새로고침 모드 (30초)
-usage-monitor --once              # 한 번만 표시
+usage-monitor --once              # 한 번만 표시 후 종료
 usage-monitor --compact           # 최소 3줄 모드
 usage-monitor --source opencode   # 특정 자격 증명 소스
 ```
@@ -115,8 +121,8 @@ cd agentic-usage-monitor
 
 bun install          # 종속성 설치
 bun run build        # 빌드
-bun run typecheck    # 타입 검사
-bun run lint         # 린트 검사
+bun run typecheck    # 타입 체크
+bun run lint         # 린트
 bun run cli --once   # 로컬 실행
 ```
 
@@ -126,7 +132,7 @@ bun run cli --once   # 로컬 실행
 bun test                  # 모든 테스트
 bun run test:e2e          # E2E 테스트
 bun run test:e2e:docker   # Docker에서 E2E 테스트 (격리된 환경)
-bun run mock-server       # mock OAuth 서버 시작
+bun run mock-server       # 모의 OAuth 서버 시작
 ```
 
 ## 라이선스
