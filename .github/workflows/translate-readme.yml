@@ -1,0 +1,30 @@
+name: Translate README
+
+on:
+  push:
+    branches: [main]
+    paths: [README.md]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  models: read
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Translate README.md to Korean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun run scripts/translate-readme.ts
+      - name: Commit translated README
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.ko.md
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "docs: translate README.md to Korean [skip ci]"
+          git push
