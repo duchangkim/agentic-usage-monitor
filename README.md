@@ -37,6 +37,11 @@ q:exit  e:config  E:apply
 brew install duchangkim/tap/usage-monitor
 ```
 
+> If you previously installed via the standalone binary, remove it first to avoid conflicts:
+> ```bash
+> usage-monitor uninstall
+> ```
+
 ### Standalone Binary (macOS / Linux)
 
 ```bash
