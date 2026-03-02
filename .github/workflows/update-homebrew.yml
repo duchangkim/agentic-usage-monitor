@@ -1,0 +1,104 @@
+name: Update Homebrew Formula
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+
+jobs:
+  update-formula:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest release info
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(gh release view --repo ${{ github.repository }} --json tagName -q '.tagName')
+          echo "version=${VERSION#v}" >> "$GITHUB_OUTPUT"
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+          gh release download "$VERSION" --repo ${{ github.repository }} --pattern checksums.txt --dir .
+          cat checksums.txt
+
+      - name: Extract checksums
+        id: checksums
+        run: |
+          echo "darwin_arm64=$(grep 'usage-monitor-darwin-arm64\.tar\.gz' checksums.txt | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "darwin_x64=$(grep 'usage-monitor-darwin-x64\.tar\.gz' checksums.txt | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "linux_x64=$(grep 'usage-monitor-linux-x64\.tar\.gz' checksums.txt | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "linux_arm64=$(grep 'usage-monitor-linux-arm64\.tar\.gz' checksums.txt | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Generate formula
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          TAG: ${{ steps.release.outputs.tag }}
+          SHA_DARWIN_ARM64: ${{ steps.checksums.outputs.darwin_arm64 }}
+          SHA_DARWIN_X64: ${{ steps.checksums.outputs.darwin_x64 }}
+          SHA_LINUX_X64: ${{ steps.checksums.outputs.linux_x64 }}
+          SHA_LINUX_ARM64: ${{ steps.checksums.outputs.linux_arm64 }}
+        run: |
+          BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          cat > usage-monitor.rb << RUBY
+          class UsageMonitor < Formula
+            desc "Real-time Claude rate limit monitoring for AI coding agents"
+            homepage "https://github.com/${{ github.repository }}"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/usage-monitor-darwin-arm64.tar.gz"
+                sha256 "${SHA_DARWIN_ARM64}"
+              else
+                url "${BASE_URL}/usage-monitor-darwin-x64.tar.gz"
+                sha256 "${SHA_DARWIN_X64}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/usage-monitor-linux-arm64.tar.gz"
+                sha256 "${SHA_LINUX_ARM64}"
+              else
+                url "${BASE_URL}/usage-monitor-linux-x64.tar.gz"
+                sha256 "${SHA_LINUX_X64}"
+              end
+            end
+
+            def install
+              if OS.mac? && Hardware::CPU.arm?
+                bin.install "usage-monitor-darwin-arm64" => "usage-monitor"
+              elsif OS.mac?
+                bin.install "usage-monitor-darwin-x64" => "usage-monitor"
+              elsif Hardware::CPU.arm?
+                bin.install "usage-monitor-linux-arm64" => "usage-monitor"
+              else
+                bin.install "usage-monitor-linux-x64" => "usage-monitor"
+              end
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/usage-monitor --version")
+            end
+          end
+          RUBY
+
+      - name: Push formula to homebrew-tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/duchangkim/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp usage-monitor.rb tap/Formula/usage-monitor.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/usage-monitor.rb
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "usage-monitor ${{ steps.release.outputs.tag }}"
+            git push
+          fi

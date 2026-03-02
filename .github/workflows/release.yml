@@ -88,6 +88,16 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Create tar.gz archives
+        run: |
+          cd artifacts
+          for bin in usage-monitor-darwin-arm64 usage-monitor-darwin-x64 usage-monitor-linux-x64 usage-monitor-linux-arm64; do
+            if [ -f "$bin" ]; then
+              chmod +x "$bin"
+              tar czf "${bin}.tar.gz" "$bin"
+            fi
+          done
+
       - name: Generate checksums
         run: |
           cd artifacts

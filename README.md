@@ -31,6 +31,12 @@ q:exit  e:config  E:apply
 
 ## Installation
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install duchangkim/tap/usage-monitor
+```
+
 ### Standalone Binary (macOS / Linux)
 
 ```bash
