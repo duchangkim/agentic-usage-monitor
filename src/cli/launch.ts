@@ -263,6 +263,9 @@ export function runLaunch(args: string[]): void {
 	// tmux recognizes S-Enter via extended-keys; the binding intercepts it before forwarding
 	tmux("bind-key -n S-Enter send-keys Escape Enter")
 
+	// Enable focus event passthrough so the monitor pane receives focus in/out sequences
+	tmux(`set-option -t ${JSON.stringify(sessionName)} focus-events on`)
+
 	// Allow terminal passthrough sequences (DCS, OSC) to reach the outer terminal
 	// Requires tmux 3.3+; needed for some TUI features in claude code / opencode
 	tmux(`set-option -t ${JSON.stringify(sessionName)} allow-passthrough on`)

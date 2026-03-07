@@ -355,6 +355,10 @@ async function runOnceMode(
 	process.exit(0)
 }
 
+const FOCUS_IN = "\x1b[I"
+const FOCUS_OUT = "\x1b[O"
+const UNFOCUSED_POLL_SECONDS = 300
+
 const SHIFT_ARROW_KEYS: Record<string, PaneMoveDirection> = {
 	"\x1b[1;2A": "up",
 	"\x1b[1;2B": "down",
@@ -426,6 +430,7 @@ async function main(): Promise<void> {
 	const monitor = createOAuthMonitor(config, args.source)
 
 	let compactMode = args.compact || config.widget.compact
+	let isFocused = true
 
 	const charPreset = getCharacterPreset(config.character.theme)
 
@@ -507,11 +512,15 @@ async function main(): Promise<void> {
 		if (event.type === "update" || event.type === "error") {
 			throttled.call()
 		}
+		if (event.type === "resume" && !isFocused) {
+			monitor.setPollingInterval(UNFOCUSED_POLL_SECONDS)
+		}
 	})
 
 	const tmuxSession = process.env.USAGE_MONITOR_SESSION
 
 	const cleanup = (): void => {
+		process.stdout.write("\x1b[?1004l")
 		throttled.dispose()
 		shimmerAnimator?.stop()
 		animator?.stop()
@@ -527,6 +536,7 @@ async function main(): Promise<void> {
 
 	const killTmuxSession = (): void => {
 		if (tmuxSession) {
+			process.stdout.write("\x1b[?1004l")
 			try {
 				execSync(`tmux kill-session -t ${JSON.stringify(tmuxSession)}`, { stdio: "ignore" })
 			} catch {
@@ -571,6 +581,10 @@ async function main(): Promise<void> {
 					if (result.success) {
 						config = result.config
 						compactMode = args.compact || config.widget.compact
+						monitor.updateConfig(config)
+						if (!isFocused) {
+							monitor.setPollingInterval(UNFOCUSED_POLL_SECONDS)
+						}
 					}
 					clearScreen()
 					render()
@@ -581,6 +595,20 @@ async function main(): Promise<void> {
 					clearScreen()
 					render()
 					return
+			}
+
+			if (key === FOCUS_IN) {
+				if (!isFocused) {
+					isFocused = true
+					monitor.fetchUsage()
+					monitor.setPollingInterval(config.display.refreshInterval)
+				}
+				return
+			}
+			if (key === FOCUS_OUT) {
+				isFocused = false
+				monitor.setPollingInterval(UNFOCUSED_POLL_SECONDS)
+				return
 			}
 
 			const direction = SHIFT_ARROW_KEYS[key]
@@ -594,6 +622,7 @@ async function main(): Promise<void> {
 	process.on("SIGTERM", killTmuxSession)
 	process.stdout.on("resize", () => throttled.call())
 
+	process.stdout.write("\x1b[?1004h")
 	monitor.start()
 	render()
 }
