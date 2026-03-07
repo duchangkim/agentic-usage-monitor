@@ -1,4 +1,7 @@
+import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
 import type { ResolvedConfig } from "../config"
+import { getConfigDir } from "../config/loader"
 import {
 	type ClaudeOAuthApi,
 	type ProfileData,
@@ -6,6 +9,18 @@ import {
 	createOAuthApi,
 } from "../data/oauth-api"
 import type { CredentialSource } from "../data/oauth-credentials"
+
+function readSharedBackoffRemaining(): number {
+	try {
+		const path = join(getConfigDir(), "backoff.json")
+		if (!existsSync(path)) return 0
+		const data = JSON.parse(readFileSync(path, "utf-8")) as { until: number }
+		const remaining = data.until - Date.now()
+		return remaining > 0 ? remaining : 0
+	} catch {
+		return 0
+	}
+}
 
 export interface RateLimitState {
 	fiveHour: {
@@ -148,7 +163,12 @@ export class OAuthMonitor {
 	private enterBackoff(retryAfter: number | null): void {
 		if (this.state.isBackingOff) return
 
-		const backoffSeconds = retryAfter && retryAfter > 0 ? retryAfter : DEFAULT_BACKOFF_SECONDS
+		// Respect shared backoff from other processes
+		const sharedRemainingMs = readSharedBackoffRemaining()
+		const ownBackoffMs =
+			(retryAfter && retryAfter > 0 ? retryAfter : DEFAULT_BACKOFF_SECONDS) * 1000
+		const backoffMs = Math.max(ownBackoffMs, sharedRemainingMs)
+
 		this.state.isBackingOff = true
 
 		if (this.intervalId) {
@@ -158,7 +178,7 @@ export class OAuthMonitor {
 
 		this.backoffTimeoutId = setTimeout(() => {
 			this.resumeAfterBackoff()
-		}, backoffSeconds * 1000)
+		}, backoffMs)
 	}
 
 	private resumeAfterBackoff(): void {

@@ -1,12 +1,23 @@
+import { logError } from "../logger"
 import {
 	type CredentialSource,
 	type OAuthCredentials,
 	loadOAuthCredentials,
 } from "./oauth-credentials"
 import { refreshOAuthToken, writeBackCredentials } from "./oauth-refresh"
+import { isSharedBackoffActive, setSharedBackoff } from "./shared-backoff"
 
 const OAUTH_API_BASE = process.env.OAUTH_API_BASE ?? "https://api.anthropic.com/api/oauth"
 const ANTHROPIC_BETA_VERSION = "oauth-2025-04-20"
+const DEFAULT_BACKOFF_SECONDS = 60
+
+function logApiError(endpoint: string, error: OAuthApiError): void {
+	logError(`API ${error.type} on ${endpoint}`, {
+		statusCode: error.statusCode,
+		message: error.message,
+		retryAfter: error.retryAfter,
+	})
+}
 
 export interface RateLimitWindow {
 	utilization: number
@@ -158,29 +169,66 @@ export class ClaudeOAuthApi {
 				return this.request<T>(endpoint, true)
 			}
 			// Refresh token is also expired/invalid — give actionable message
-			return {
-				success: false,
-				error: {
-					type: "authentication_error",
-					message: "Session expired. Re-authenticate via /login",
-					statusCode: 401,
-					retryAfter: null,
-				},
+			const authError: OAuthApiError = {
+				type: "authentication_error",
+				message: "Session expired. Re-authenticate via /login",
+				statusCode: 401,
+				retryAfter: null,
 			}
+			logApiError(endpoint, authError)
+			return { success: false, error: authError }
 		}
 		// No refresh token available at all
+		const noTokenError: OAuthApiError = {
+			type: "authentication_error",
+			message: "OAuth token expired. Re-authenticate via /login",
+			statusCode: 401,
+			retryAfter: null,
+		}
+		logApiError(endpoint, noTokenError)
+		return { success: false, error: noTokenError }
+	}
+
+	private checkSharedBackoff<T>(): OAuthApiResult<T> | null {
+		if (!isSharedBackoffActive()) return null
 		return {
 			success: false,
 			error: {
-				type: "authentication_error",
-				message: "OAuth token expired. Re-authenticate via /login",
-				statusCode: 401,
+				type: "rate_limit_error",
+				message: "Backing off (another process hit rate limit)",
+				statusCode: 429,
 				retryAfter: null,
 			},
 		}
 	}
 
+	private async handleHttpError<T>(
+		endpoint: string,
+		response: Response,
+		usedToken: string,
+		isRetry: boolean,
+	): Promise<OAuthApiResult<T>> {
+		if ((response.status === 401 || response.status === 403) && !isRetry) {
+			return this.handleAuthError<T>(endpoint, usedToken)
+		}
+		if (response.status === 401 || response.status === 403) {
+			this.credentials = null
+		}
+		const errorText = await response.text()
+		const retryAfter = response.status === 429 ? parseRetryAfter(response) : null
+		if (response.status === 429) {
+			const backoffSec = retryAfter && retryAfter > 0 ? retryAfter : DEFAULT_BACKOFF_SECONDS
+			setSharedBackoff(backoffSec)
+		}
+		const apiError = createError(response.status, errorText, retryAfter)
+		logApiError(endpoint, apiError)
+		return { success: false, error: apiError }
+	}
+
 	private async request<T>(endpoint: string, isRetry = false): Promise<OAuthApiResult<T>> {
+		const backoff = this.checkSharedBackoff<T>()
+		if (backoff) return backoff
+
 		const credResult = await this.ensureCredentials()
 		if (!credResult.success) {
 			return credResult
@@ -200,27 +248,15 @@ export class ClaudeOAuthApi {
 			})
 
 			if (!response.ok) {
-				if ((response.status === 401 || response.status === 403) && !isRetry) {
-					return this.handleAuthError<T>(endpoint, usedToken)
-				}
-				if (response.status === 401 || response.status === 403) {
-					this.credentials = null
-				}
-				const errorText = await response.text()
-				const retryAfter = response.status === 429 ? parseRetryAfter(response) : null
-				return {
-					success: false,
-					error: createError(response.status, errorText, retryAfter),
-				}
+				return this.handleHttpError<T>(endpoint, response, usedToken, isRetry)
 			}
 
 			const data = (await response.json()) as T
 			return { success: true, data }
 		} catch (error) {
-			return {
-				success: false,
-				error: createError(0, error instanceof Error ? error.message : "Network error"),
-			}
+			const apiError = createError(0, error instanceof Error ? error.message : "Network error")
+			logApiError(endpoint, apiError)
+			return { success: false, error: apiError }
 		}
 	}
 
