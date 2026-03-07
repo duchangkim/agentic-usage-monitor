@@ -30,10 +30,14 @@ interface RequestLogEntry {
 	scenario: string
 }
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(
+	data: unknown,
+	status = 200,
+	extraHeaders?: Record<string, string>,
+): Response {
 	return new Response(JSON.stringify(data), {
 		status,
-		headers: { "Content-Type": "application/json" },
+		headers: { "Content-Type": "application/json", ...extraHeaders },
 	})
 }
 
@@ -69,7 +73,11 @@ async function handleScenarioRoute(
 	}
 
 	if (scenario.statusCode && scenario.statusCode >= 400) {
-		return jsonResponse(scenario.errorBody ?? { error: "error" }, scenario.statusCode)
+		const extraHeaders: Record<string, string> = {}
+		if (scenario.statusCode === 429 && scenario.retryAfter !== undefined) {
+			extraHeaders["retry-after"] = String(scenario.retryAfter)
+		}
+		return jsonResponse(scenario.errorBody ?? { error: "error" }, scenario.statusCode, extraHeaders)
 	}
 
 	if (path === "/api/oauth/usage") {

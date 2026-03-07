@@ -24,6 +24,7 @@ export interface RateLimitState {
 
 export interface OAuthMonitorState {
 	isRunning: boolean
+	isBackingOff: boolean
 	lastFetch: Date | null
 	lastError: string | null
 	rateLimits: RateLimitState | null
@@ -40,13 +41,17 @@ export interface OAuthMonitorEvent {
 
 type OAuthMonitorListener = (event: OAuthMonitorEvent) => void
 
+const DEFAULT_BACKOFF_SECONDS = 60
+
 export class OAuthMonitor {
 	private config: ResolvedConfig
 	private api: ClaudeOAuthApi
 	private intervalId: ReturnType<typeof setInterval> | null = null
+	private backoffTimeoutId: ReturnType<typeof setTimeout> | null = null
 	private listeners: Set<OAuthMonitorListener> = new Set()
 	private state: OAuthMonitorState = {
 		isRunning: false,
+		isBackingOff: false,
 		lastFetch: null,
 		lastError: null,
 		rateLimits: null,
@@ -85,6 +90,9 @@ export class OAuthMonitor {
 			this.state.lastError = result.error.message
 			this.state.lastFetch = new Date()
 			this.emit("error")
+			if (result.error.statusCode === 429) {
+				this.enterBackoff(result.error.retryAfter)
+			}
 			return null
 		}
 
@@ -137,6 +145,37 @@ export class OAuthMonitor {
 		return { usage, profile }
 	}
 
+	private enterBackoff(retryAfter: number | null): void {
+		if (this.state.isBackingOff) return
+
+		const backoffSeconds = retryAfter && retryAfter > 0 ? retryAfter : DEFAULT_BACKOFF_SECONDS
+		this.state.isBackingOff = true
+
+		if (this.intervalId) {
+			clearInterval(this.intervalId)
+			this.intervalId = null
+		}
+
+		this.backoffTimeoutId = setTimeout(() => {
+			this.resumeAfterBackoff()
+		}, backoffSeconds * 1000)
+	}
+
+	private resumeAfterBackoff(): void {
+		this.backoffTimeoutId = null
+		this.state.isBackingOff = false
+		this.api.clearCredentials()
+
+		this.fetchUsage()
+
+		if (this.state.isRunning) {
+			const intervalMs = this.config.display.refreshInterval * 1000
+			this.intervalId = setInterval(() => {
+				this.fetchUsage()
+			}, intervalMs)
+		}
+	}
+
 	start(): void {
 		if (this.state.isRunning) return
 		if (!this.config.oauth.enabled) return
@@ -160,6 +199,12 @@ export class OAuthMonitor {
 			this.intervalId = null
 		}
 
+		if (this.backoffTimeoutId) {
+			clearTimeout(this.backoffTimeoutId)
+			this.backoffTimeoutId = null
+		}
+
+		this.state.isBackingOff = false
 		this.state.isRunning = false
 		this.emit("stop")
 	}

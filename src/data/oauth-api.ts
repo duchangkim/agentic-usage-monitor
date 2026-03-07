@@ -46,6 +46,7 @@ export interface OAuthApiError {
 	type: "api_error" | "authentication_error" | "rate_limit_error" | "credentials_error"
 	message: string
 	statusCode: number
+	retryAfter: number | null
 }
 
 export type OAuthApiResult<T> =
@@ -73,14 +74,25 @@ function parseErrorMessage(responseBody: string): string {
 	return responseBody
 }
 
-function createError(statusCode: number, responseBody: string): OAuthApiError {
+function createError(
+	statusCode: number,
+	responseBody: string,
+	retryAfter: number | null = null,
+): OAuthApiError {
 	let type: OAuthApiError["type"] = "api_error"
 	if (statusCode === 401 || statusCode === 403) {
 		type = "authentication_error"
 	} else if (statusCode === 429) {
 		type = "rate_limit_error"
 	}
-	return { type, message: parseErrorMessage(responseBody), statusCode }
+	return { type, message: parseErrorMessage(responseBody), statusCode, retryAfter }
+}
+
+function parseRetryAfter(response: Response): number | null {
+	const raw = response.headers.get("retry-after")
+	if (!raw) return null
+	const parsed = Number(raw)
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 export class ClaudeOAuthApi {
@@ -108,6 +120,7 @@ export class ClaudeOAuthApi {
 					type: "credentials_error",
 					message: result.error,
 					statusCode: 0,
+					retryAfter: null,
 				},
 			}
 		}
@@ -151,6 +164,7 @@ export class ClaudeOAuthApi {
 					type: "authentication_error",
 					message: "Session expired. Re-authenticate via /login",
 					statusCode: 401,
+					retryAfter: null,
 				},
 			}
 		}
@@ -161,6 +175,7 @@ export class ClaudeOAuthApi {
 				type: "authentication_error",
 				message: "OAuth token expired. Re-authenticate via /login",
 				statusCode: 401,
+				retryAfter: null,
 			},
 		}
 	}
@@ -192,9 +207,10 @@ export class ClaudeOAuthApi {
 					this.credentials = null
 				}
 				const errorText = await response.text()
+				const retryAfter = response.status === 429 ? parseRetryAfter(response) : null
 				return {
 					success: false,
-					error: createError(response.status, errorText),
+					error: createError(response.status, errorText, retryAfter),
 				}
 			}
 
@@ -206,6 +222,10 @@ export class ClaudeOAuthApi {
 				error: createError(0, error instanceof Error ? error.message : "Network error"),
 			}
 		}
+	}
+
+	clearCredentials(): void {
+		this.credentials = null
 	}
 
 	async getUsage(): Promise<OAuthApiResult<UsageData>> {

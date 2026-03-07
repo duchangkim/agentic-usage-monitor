@@ -43,6 +43,7 @@ export interface MockScenario {
 	delay?: number
 	statusCode?: number
 	errorBody?: { error: string; message?: string }
+	retryAfter?: number
 }
 
 function futureDate(hours: number): string {
@@ -161,6 +162,7 @@ export const SCENARIOS: Record<string, MockScenario> = {
 			seven_day_opus: null,
 		},
 		statusCode: 429,
+		retryAfter: 0,
 		errorBody: {
 			error: "rate_limit_exceeded",
 			message: "You have exceeded your rate limit",
