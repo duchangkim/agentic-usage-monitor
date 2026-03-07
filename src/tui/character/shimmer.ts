@@ -13,7 +13,7 @@ export interface ShimmerState {
 }
 
 const DEFAULT_CONFIG: ShimmerConfig = {
-	frameIntervalMs: 35,
+	frameIntervalMs: 45,
 	cycleMinMs: 10000,
 	cycleMaxMs: 20000,
 }

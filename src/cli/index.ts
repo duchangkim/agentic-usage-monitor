@@ -25,6 +25,7 @@ import {
 	renderCharacter,
 	renderMiniCharacter,
 } from "../tui/character"
+import { createRenderThrottle } from "../tui/render-throttle"
 import { text } from "../tui/renderer"
 import { getColorLevel, getPresetNames, getTheme, initTheme } from "../tui/theme"
 import {
@@ -488,27 +489,30 @@ async function main(): Promise<void> {
 		}
 	}
 
+	const throttled = createRenderThrottle(render, 30)
+
 	if (config.character.enabled && config.character.animation && charPreset) {
-		animator = new CharacterAnimator(charPreset, () => render(), {
+		animator = new CharacterAnimator(charPreset, () => throttled.call(), {
 			language: config.character.language,
 		})
 		animator.start()
 	}
 
 	if (config.character.enabled && config.character.shimmer && getColorLevel() === "truecolor") {
-		shimmerAnimator = new ShimmerAnimator(() => render())
+		shimmerAnimator = new ShimmerAnimator(() => throttled.call())
 		shimmerAnimator.start()
 	}
 
 	monitor.on((event) => {
 		if (event.type === "update" || event.type === "error") {
-			render()
+			throttled.call()
 		}
 	})
 
 	const tmuxSession = process.env.USAGE_MONITOR_SESSION
 
 	const cleanup = (): void => {
+		throttled.dispose()
 		shimmerAnimator?.stop()
 		animator?.stop()
 		monitor.stop()
@@ -588,7 +592,7 @@ async function main(): Promise<void> {
 
 	process.on("SIGINT", killTmuxSession)
 	process.on("SIGTERM", killTmuxSession)
-	process.stdout.on("resize", render)
+	process.stdout.on("resize", () => throttled.call())
 
 	monitor.start()
 	render()
