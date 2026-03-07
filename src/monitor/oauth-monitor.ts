@@ -31,7 +31,7 @@ export interface OAuthMonitorState {
 	profile: ProfileData | null
 }
 
-export type OAuthMonitorEventType = "update" | "error" | "start" | "stop"
+export type OAuthMonitorEventType = "update" | "error" | "start" | "stop" | "resume"
 
 export interface OAuthMonitorEvent {
 	type: OAuthMonitorEventType
@@ -174,6 +174,22 @@ export class OAuthMonitor {
 				this.fetchUsage()
 			}, intervalMs)
 		}
+
+		this.emit("resume")
+	}
+
+	setPollingInterval(intervalSeconds: number): void {
+		if (!this.state.isRunning || this.state.isBackingOff) return
+
+		if (this.intervalId) {
+			clearInterval(this.intervalId)
+			this.intervalId = null
+		}
+
+		const intervalMs = intervalSeconds * 1000
+		this.intervalId = setInterval(() => {
+			this.fetchUsage()
+		}, intervalMs)
 	}
 
 	start(): void {
